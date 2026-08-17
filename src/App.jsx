@@ -276,6 +276,7 @@ export default function App() {
         rating: reviewRatingInput,
         text: reviewTextInput.trim(),
         date: todayStr(),
+        createdAt: Date.now(),
       };
 
       if (isNewItem) {
@@ -383,6 +384,15 @@ export default function App() {
   const displayFont = isMobile ? '28px' : '40px';
   const homeColGrid = isMobile ? '1fr' : '1fr 1fr';
 
+  // Reviews only carry a day-precision `date` string, so same-day reviews used to sort
+  // in whatever order they happened to land in the array (not actual submission order).
+  // `createdAt` (added going forward) breaks that tie precisely; older reviews written
+  // before it existed fall back to the date-only comparison as before.
+  const byNewestReview = (a, b) => {
+    if (a.createdAt && b.createdAt) return b.createdAt - a.createdAt;
+    return b.date.localeCompare(a.date);
+  };
+
   const buildChartRows = (type) =>
     items
       .filter((i) => i.type === type)
@@ -424,7 +434,7 @@ export default function App() {
         onClickAuthor: () => openUserProfile(r.userId),
       }))
     )
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort(byNewestReview);
 
   const homeRecentReviews = items
     .flatMap((i) =>
@@ -441,7 +451,7 @@ export default function App() {
         onOpenItem: () => openDetail(i.id),
       }))
     )
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort(byNewestReview)
     .slice(0, 4);
 
   const homeRecentPosts = [...posts]
@@ -490,7 +500,7 @@ export default function App() {
         reviewCount: detailItemObj.reviews.length,
         tracklist: detailTracklist,
         reviews: [...detailItemObj.reviews]
-          .sort((a, b) => b.date.localeCompare(a.date))
+          .sort(byNewestReview)
           .map((r) => ({
             id: r.id,
             rating: r.rating,
@@ -526,11 +536,12 @@ export default function App() {
               ...ratingBadge(r.rating),
               text: r.text,
               date: r.date,
+              createdAt: r.createdAt,
               onEdit: isOwnProfile ? () => openEditReview(i.id, r) : null,
               onDelete: isOwnProfile ? () => requestDeleteReview(i.id, r.id, r.text) : null,
             }))
         )
-        .sort((a, b) => b.date.localeCompare(a.date))
+        .sort(byNewestReview)
     : [];
 
   const myPosts = profileUserId

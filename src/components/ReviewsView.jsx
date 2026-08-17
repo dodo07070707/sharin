@@ -107,7 +107,7 @@ export default function ReviewsView({
                 {rv.itemTitle} · {rv.itemArtist}
               </a>
               <div style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}>
-                {rv.starsStr}
+                {rv.starsStr} {rv.rating.toFixed(1)}
               </div>
               <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10 }}>
                 {rv.text}

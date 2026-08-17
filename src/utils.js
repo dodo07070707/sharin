@@ -29,11 +29,6 @@ export function ratingBadge(val) {
   return { ratingBg: '#000000', ratingColor: hex, ratingBorder: `1px solid ${hex}` };
 }
 
-export function coverLabelFor(items, relId) {
-  const it = items.find((x) => x.id === relId);
-  return it ? (it.type === 'song' ? 'SONG COVER' : 'ALBUM COVER') : 'BOARD';
-}
-
 export function artworkFor(items, artworkMap, id) {
   const it = items.find((x) => x.id === id);
   if (!it) return null;
@@ -42,4 +37,44 @@ export function artworkFor(items, artworkMap, id) {
 
 export function todayStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Post content is an ordered list of blocks ({type:'text'} or {type:'item'}) so a
+// post can interleave several song/album embeds with paragraphs. Older posts were
+// written before this existed and have a plain string `content` — normalize both.
+export function normalizePostContent(content) {
+  if (Array.isArray(content)) return content;
+  if (typeof content === 'string' && content) return [{ type: 'text', text: content }];
+  return [];
+}
+
+export function boardCoverFor(content) {
+  const block = normalizePostContent(content).find((b) => b.type === 'item');
+  if (!block) return { coverLabel: 'BOARD', imageUrl: null };
+  return { coverLabel: block.itemType === 'song' ? 'SONG COVER' : 'ALBUM COVER', imageUrl: block.artworkUrl || null };
+}
+
+export function rankBadgeColor(rank) {
+  if (rank === 1) return '#ffd60a';
+  if (rank === 2) return '#c0c0c0';
+  if (rank === 3) return '#cd7f32';
+  return null;
+}
+
+export function itemHref(id) {
+  return `/item/${encodeURIComponent(id)}`;
+}
+
+export function boardHref(id) {
+  return `/board/${encodeURIComponent(id)}`;
+}
+
+// Lets list rows render as real <a> links (so right-click "copy link", cmd/ctrl-click
+// to open in a new tab, etc. all work) while a plain left-click still does SPA nav.
+export function navClick(fn) {
+  return (e) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    fn();
+  };
 }

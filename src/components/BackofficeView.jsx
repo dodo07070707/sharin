@@ -2,24 +2,28 @@ export default function BackofficeView({
   sectionPadV,
   sectionPadH,
   displayFont,
-  user,
+  profileNickname,
+  isOwnProfile,
   onLoginClick,
   myReviews,
   myPosts,
+  myGenreStats,
   isAdmin,
   pendingUsers,
 }) {
+  const reviewsLabel = isOwnProfile ? "내가 쓴 리뷰" : `${profileNickname}님이 쓴 리뷰`;
+  const postsLabel = isOwnProfile ? "내가 쓴 게시글" : `${profileNickname}님이 쓴 게시글`;
   return (
     <div
-      data-screen-label="백오피스"
+      data-screen-label="마이페이지"
       style={{ padding: `${sectionPadV} ${sectionPadH}` }}
     >
       <h1
         style={{ fontSize: displayFont, fontWeight: 600, margin: "0 0 32px" }}
       >
-        백오피스
+        {isOwnProfile ? "마이페이지" : `${profileNickname}님의 마이페이지`}
       </h1>
-      {!user ? (
+      {!profileNickname ? (
         <div
           style={{
             textAlign: "center",
@@ -105,8 +109,36 @@ export default function BackofficeView({
               </div>
             </div>
           )}
+          {myGenreStats.length > 0 && (
+            <div style={{ marginBottom: 48 }}>
+              <h2 style={{ fontSize: 21, fontWeight: 600, margin: "0 0 16px" }}>
+                장르별 통계
+              </h2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                {myGenreStats.map((g) => (
+                  <div
+                    key={g.genre}
+                    style={{
+                      background: "#1c1c1e",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 10,
+                      padding: "14px 20px",
+                      minWidth: 140,
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                      {g.genre}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#98989d" }}>
+                      {g.count}개 · ★ {g.avgFixed}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <h2 style={{ fontSize: 21, fontWeight: 600, margin: "0 0 16px" }}>
-            내가 쓴 한줄평
+            {reviewsLabel}
           </h2>
           <div
             style={{
@@ -141,50 +173,52 @@ export default function BackofficeView({
                   >
                     {rv.starsStr}
                   </div>
-                  <div style={{ fontSize: 17 }}>"{rv.text}"</div>
+                  <div style={{ fontSize: 17 }}>{rv.text}</div>
                 </div>
-                <div
-                  style={{ display: "flex", gap: 8, alignItems: "flex-start" }}
-                >
-                  <button
-                    onClick={rv.onEdit}
-                    style={{
-                      background: "#2c2c2e",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "8px 15px",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
+                {rv.onEdit && (
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "flex-start" }}
                   >
-                    수정
-                  </button>
-                  <button
-                    onClick={rv.onDelete}
-                    style={{
-                      background: "transparent",
-                      color: "#98989d",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 8,
-                      padding: "8px 15px",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
-                  >
-                    삭제
-                  </button>
-                </div>
+                    <button
+                      onClick={rv.onEdit}
+                      style={{
+                        background: "#2c2c2e",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "8px 15px",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={rv.onDelete}
+                      style={{
+                        background: "transparent",
+                        color: "#98989d",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        borderRadius: 8,
+                        padding: "8px 15px",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {myReviews.length === 0 && (
               <p style={{ color: "#98989d", fontSize: 14 }}>
-                아직 작성한 한줄평이 없어요.
+                아직 작성한 리뷰가 없어요.
               </p>
             )}
           </div>
           <h2 style={{ fontSize: 21, fontWeight: 600, margin: "0 0 16px" }}>
-            내가 쓴 게시글
+            {postsLabel}
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {myPosts.map((pt) => (
@@ -222,36 +256,38 @@ export default function BackofficeView({
                     {pt.date}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={pt.onEdit}
-                    style={{
-                      background: "#2c2c2e",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "8px 15px",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
-                  >
-                    수정
-                  </button>
-                  <button
-                    onClick={pt.onDelete}
-                    style={{
-                      background: "transparent",
-                      color: "#98989d",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 8,
-                      padding: "8px 15px",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
-                  >
-                    삭제
-                  </button>
-                </div>
+                {pt.onEdit && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={pt.onEdit}
+                      style={{
+                        background: "#2c2c2e",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "8px 15px",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={pt.onDelete}
+                      style={{
+                        background: "transparent",
+                        color: "#98989d",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        borderRadius: 8,
+                        padding: "8px 15px",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {myPosts.length === 0 && (

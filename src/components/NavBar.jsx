@@ -3,7 +3,7 @@ const NAV_DEFS = [
   { key: "chart", label: "차트" },
   { key: "reviews", label: "리뷰" },
   { key: "board", label: "게시글" },
-  { key: "backoffice", label: "백오피스" },
+  { key: "backoffice", label: "마이페이지" },
 ];
 
 export default function NavBar({ view, onNavigate }) {

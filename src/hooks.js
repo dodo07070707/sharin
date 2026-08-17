@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchArtwork, searchItunes } from './itunes';
+import { fetchArtwork, searchItunes, fetchAlbumTracklist } from './itunes';
 import { subscribeToAuthUser } from './auth';
 import { subscribeToUserProfile } from './firestoreHooks';
 
@@ -67,7 +67,28 @@ export function useArtworkMap(items) {
   return map;
 }
 
-// Debounced iTunes search used by the 한줄평 작성 flow.
+// Fetches an album's tracklist from iTunes once the detail overlay is open on it.
+export function useAlbumTracklist(itunesId, type) {
+  const [tracks, setTracks] = useState([]);
+
+  useEffect(() => {
+    if (type !== 'album' || !itunesId) {
+      setTracks([]);
+      return;
+    }
+    let cancelled = false;
+    fetchAlbumTracklist(itunesId).then((t) => {
+      if (!cancelled) setTracks(t);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [itunesId, type]);
+
+  return tracks;
+}
+
+// Debounced iTunes search used by the 리뷰 작성 flow.
 export function useItunesSearch(query, type, active) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);

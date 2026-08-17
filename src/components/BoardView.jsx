@@ -1,5 +1,7 @@
 import CoverThumb from "./CoverThumb";
+import PostItemCard from "./PostItemCard";
 import { BOARD_CATEGORIES } from "../data";
+import { boardHref, navClick } from "../utils";
 
 export default function BoardView({
   sectionPadV,
@@ -31,7 +33,7 @@ export default function BoardView({
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <CoverThumb
                 size={40}
-                radius={30}
+                radius={12}
                 fontSize={5}
                 label={boardDetail.coverLabel}
                 imageUrl={boardDetail.imageUrl}
@@ -58,13 +60,25 @@ export default function BoardView({
               {boardDetail.title}
             </h1>
             <div style={{ fontSize: 12, color: "#98989d", marginBottom: 24 }}>
-              {boardDetail.author} · {boardDetail.date}
+              <span onClick={boardDetail.onClickAuthor} style={{ cursor: "pointer" }}>
+                {boardDetail.author}
+              </span>{" "}
+              · {boardDetail.date}
             </div>
-            <p
-              style={{ fontSize: 17, lineHeight: 1.47, whiteSpace: "pre-wrap" }}
-            >
-              {boardDetail.content}
-            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {boardDetail.content.map((block, i) =>
+                block.type === "item" ? (
+                  <PostItemCard key={i} block={block} />
+                ) : (
+                  <p
+                    key={i}
+                    style={{ fontSize: 17, lineHeight: 1.47, whiteSpace: "pre-wrap", margin: 0 }}
+                  >
+                    {block.text}
+                  </p>
+                )
+              )}
+            </div>
             {boardDetail.canEdit && (
               <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
                 <button
@@ -160,9 +174,10 @@ export default function BoardView({
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {boardList.map((pt) => (
-          <div
+          <a
             key={pt.id}
-            onClick={pt.onOpen}
+            href={boardHref(pt.id)}
+            onClick={navClick(pt.onOpen)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -171,11 +186,13 @@ export default function BoardView({
               cursor: "pointer",
               gap: 16,
               flexWrap: "wrap",
+              textDecoration: "none",
+              color: "inherit",
             }}
           >
             <CoverThumb
               size={44}
-              radius={30}
+              radius={12}
               fontSize={6}
               label={pt.coverLabel}
               imageUrl={pt.imageUrl}
@@ -203,9 +220,19 @@ export default function BoardView({
               <span style={{ fontSize: 17, fontWeight: 600 }}>{pt.title}</span>
             </div>
             <span style={{ color: "#98989d", fontSize: 12 }}>
-              {pt.author} · {pt.date}
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  pt.onClickAuthor();
+                }}
+                style={{ cursor: "pointer" }}
+              >
+                {pt.author}
+              </span>{" "}
+              · {pt.date}
             </span>
-          </div>
+          </a>
         ))}
       </div>
     </div>

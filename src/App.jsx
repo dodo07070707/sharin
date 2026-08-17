@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Header from './components/Header';
 import NavBar from './components/NavBar';
 import HomeView from './components/HomeView';
@@ -11,8 +11,10 @@ import DetailOverlay from './components/DetailOverlay';
 import LoginModal from './components/LoginModal';
 import ReviewFormModal from './components/ReviewFormModal';
 import PostFormModal from './components/PostFormModal';
-import { avg, starsStr, typeBadge, ratingBadge, coverLabelFor, artworkFor, todayStr } from './utils';
-import { useIsMobile, useArtworkMap, useItunesSearch, useAuthUser } from './hooks';
+import ItemSearchModal from './components/ItemSearchModal';
+import ConfirmModal from './components/ConfirmModal';
+import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor } from './utils';
+import { useIsMobile, useArtworkMap, useItunesSearch, useAuthUser, useAlbumTracklist } from './hooks';
 import { useItemsCollection, usePostsCollection, usePendingUsers } from './firestoreHooks';
 import { logIn, signUp, logOut, authErrorMessage } from './auth';
 
@@ -23,6 +25,8 @@ export default function App() {
   const [boardFilter, setBoardFilter] = useState('전체');
   const [detailId, setDetailId] = useState(null);
   const [boardDetailId, setBoardDetailId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [myPageUserId, setMyPageUserId] = useState(null);
   const user = useAuthUser();
 
   const [showLogin, setShowLogin] = useState(false);
@@ -48,7 +52,11 @@ export default function App() {
   const [editingPostId, setEditingPostId] = useState(null);
   const [postTitleInput, setPostTitleInput] = useState('');
   const [postCategoryInput, setPostCategoryInput] = useState('월간결산');
-  const [postContentInput, setPostContentInput] = useState('');
+  const [postBlocks, setPostBlocks] = useState([{ id: 'b0', type: 'text', text: '' }]);
+  const [showPostItemSearch, setShowPostItemSearch] = useState(false);
+  const [postItemSearchType, setPostItemSearchType] = useState('song');
+  const [postItemSearchQuery, setPostItemSearchQuery] = useState('');
+  const [postItemInsertAfter, setPostItemInsertAfter] = useState(null);
 
   const { items, addItem, addReview, replaceReviews } = useItemsCollection();
   const { posts, addPost, updatePost, removePost } = usePostsCollection();
@@ -63,17 +71,65 @@ export default function App() {
     reviewSearchType,
     showReviewForm && !reviewFormTargetId && !editingReviewId
   );
+  const { results: postItemSearchResults, loading: postItemSearchLoading, error: postItemSearchError } = useItunesSearch(
+    postItemSearchQuery,
+    postItemSearchType,
+    showPostItemSearch
+  );
 
   const setView = (v) => setViewState(v);
-  const resetDetails = () => { setDetailId(null); setBoardDetailId(null); };
+  const resetDetails = () => {
+    if (detailId || boardDetailId) window.history.replaceState({}, '', '/');
+    setDetailId(null);
+    setBoardDetailId(null);
+  };
   const goHome = () => { setView('home'); resetDetails(); };
   const goChart = () => { setView('chart'); resetDetails(); };
   const goReviews = () => { setView('reviews'); resetDetails(); };
   const goBoard = () => { setView('board'); resetDetails(); };
-  const onNavigate = (key) => { setView(key); resetDetails(); };
+  const onNavigate = (key) => {
+    setView(key);
+    resetDetails();
+    if (key === 'backoffice') setMyPageUserId(null);
+  };
+  const openUserProfile = (userId) => {
+    setMyPageUserId(userId);
+    setView('backoffice');
+    resetDetails();
+  };
 
-  const openDetail = (id) => setDetailId(id);
-  const onCloseDetail = () => setDetailId(null);
+  // Gives each song/album detail and board post a real, shareable URL (/item/:id,
+  // /board/:id) and keeps it in sync with browser back/forward, including deep
+  // links opened directly (e.g. a shared link landing on first load).
+  useEffect(() => {
+    const applyRoute = () => {
+      const path = window.location.pathname;
+      const itemMatch = path.match(/^\/item\/([^/]+)$/);
+      const boardMatch = path.match(/^\/board\/([^/]+)$/);
+      if (itemMatch) {
+        setDetailId(decodeURIComponent(itemMatch[1]));
+        setBoardDetailId(null);
+      } else if (boardMatch) {
+        setBoardDetailId(decodeURIComponent(boardMatch[1]));
+        setViewState('board');
+        setDetailId(null);
+      } else {
+        setDetailId(null);
+        setBoardDetailId(null);
+      }
+    };
+    applyRoute();
+    window.addEventListener('popstate', applyRoute);
+    return () => window.removeEventListener('popstate', applyRoute);
+  }, []);
+
+  const openDetail = (id) => {
+    window.history.pushState({}, '', itemHref(id));
+    setDetailId(id);
+  };
+  const onCloseDetail = () => {
+    if (detailId) window.history.back();
+  };
 
   const resetAuthForm = () => {
     setAuthMode('login');
@@ -165,6 +221,19 @@ export default function App() {
     if (!target) return;
     replaceReviews(itemId, target.reviews.filter((r) => r.id !== reviewId));
   };
+  const requestDeleteReview = (itemId, reviewId, text) => {
+    setPendingDelete({
+      message: `"${text}" 리뷰를 삭제할까요?`,
+      onConfirm: () => { deleteReview(itemId, reviewId); setPendingDelete(null); },
+    });
+  };
+  const requestDeletePost = (id, title) => {
+    setPendingDelete({
+      message: `"${title}" 게시글을 삭제할까요?`,
+      onConfirm: () => { deletePost(id); setPendingDelete(null); },
+    });
+  };
+  const cancelPendingDelete = () => setPendingDelete(null);
   const onSubmitReview = () => {
     if (!reviewTextInput.trim() || !user || !user.approved) return;
 
@@ -183,6 +252,7 @@ export default function App() {
         artist: reviewSearchSelected.artist,
         releaseDate: reviewSearchSelected.releaseDate,
         artworkUrl: reviewSearchSelected.artworkUrl,
+        genre: reviewSearchSelected.genre || null,
         reviews: [],
       };
       isNewItem = true;
@@ -221,43 +291,95 @@ export default function App() {
     setReviewSearchSelected(null);
   };
 
+  const newBlockId = () => 'b' + crypto.randomUUID();
   const openPostFormNew = () => {
     if (!requireApproved()) return;
     setShowPostForm(true);
     setEditingPostId(null);
     setPostTitleInput('');
     setPostCategoryInput('월간결산');
-    setPostContentInput('');
+    setPostBlocks([{ id: newBlockId(), type: 'text', text: '' }]);
   };
   const openEditPost = (post) => {
     setShowPostForm(true);
     setEditingPostId(post.id);
     setPostTitleInput(post.title);
     setPostCategoryInput(post.category);
-    setPostContentInput(post.content);
+    setPostBlocks(normalizePostContent(post.content).map((b) => ({ id: newBlockId(), ...b })));
   };
-  const onClosePostForm = () => setShowPostForm(false);
+  const onClosePostForm = () => { setShowPostForm(false); setShowPostItemSearch(false); };
   const deletePost = (id) => {
     removePost(id);
     setBoardDetailId((prev) => (prev === id ? null : prev));
   };
+  const updatePostBlockText = (id, text) => setPostBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, text } : b)));
+  const removePostBlock = (id) => setPostBlocks((bs) => {
+    const next = bs.filter((b) => b.id !== id);
+    return next.length ? next : [{ id: newBlockId(), type: 'text', text: '' }];
+  });
+  const openPostItemSearch = (afterId) => {
+    setPostItemInsertAfter(afterId);
+    setPostItemSearchType('song');
+    setPostItemSearchQuery('');
+    setShowPostItemSearch(true);
+  };
+  const onPickPostItem = (result) => {
+    setPostBlocks((bs) => {
+      const idx = bs.findIndex((b) => b.id === postItemInsertAfter);
+      const insertAt = idx === -1 ? bs.length : idx + 1;
+      const itemBlock = {
+        id: newBlockId(),
+        type: 'item',
+        itemType: result.type,
+        itemId: result.itunesId,
+        title: result.title,
+        artist: result.artist,
+        artworkUrl: result.artworkUrl || null,
+      };
+      const textBlock = { id: newBlockId(), type: 'text', text: '' };
+      const next = [...bs];
+      next.splice(insertAt, 0, itemBlock, textBlock);
+      return next;
+    });
+    setShowPostItemSearch(false);
+  };
   const onSubmitPost = () => {
-    if (!postTitleInput.trim() || !postContentInput.trim() || !user || !user.approved) return;
+    const hasText = postBlocks.some((b) => b.type === 'text' && b.text.trim());
+    if (!postTitleInput.trim() || !hasText || !user || !user.approved) return;
+    const content = postBlocks
+      .filter((b) => (b.type === 'text' ? b.text.trim() : true))
+      .map((b) =>
+        b.type === 'text'
+          ? { type: 'text', text: b.text.trim() }
+          : { type: 'item', itemType: b.itemType, itemId: b.itemId, title: b.title, artist: b.artist, artworkUrl: b.artworkUrl || null }
+      );
     if (editingPostId) {
-      updatePost(editingPostId, { title: postTitleInput.trim(), category: postCategoryInput, content: postContentInput.trim() });
+      updatePost(editingPostId, { title: postTitleInput.trim(), category: postCategoryInput, content });
     } else {
-      addPost({ title: postTitleInput.trim(), category: postCategoryInput, content: postContentInput.trim(), author: user.id, date: todayStr() });
+      addPost({ title: postTitleInput.trim(), category: postCategoryInput, content, author: user.id, date: todayStr() });
     }
     setShowPostForm(false);
   };
-  const openBoardDetail = (id) => { setBoardDetailId(id); setView('board'); };
-  const onBoardBack = () => setBoardDetailId(null);
+  const openBoardDetail = (id) => {
+    window.history.pushState({}, '', boardHref(id));
+    setBoardDetailId(id);
+    setView('board');
+  };
+  const onBoardBack = () => {
+    if (boardDetailId) window.history.back();
+  };
 
 
 
   // ---- derived values (mirrors the original renderVals) ----
   const sectionPadV = isMobile ? '48px' : '80px';
   const sectionPadH = isMobile ? '20px' : '80px';
+  // Non-home pages read as a narrower, more centered column — wider side margins
+  // than the home page, which keeps its own tighter padding for the chart strips.
+  // A flat 400px broke narrower viewports (padding alone could exceed the viewport
+  // width, collapsing content to ~0 and wrapping text one character per line), so
+  // this scales with viewport width instead of jumping between two fixed values.
+  const sectionPadHWide = 'clamp(27px, 20vw, 533px)';
   const displayFont = isMobile ? '28px' : '40px';
   const homeColGrid = isMobile ? '1fr' : '1fr 1fr';
 
@@ -282,14 +404,15 @@ export default function App() {
       }));
 
   const chartList = buildChartRows(chartType);
-  const homeChartSongs = buildChartRows('song').slice(0, 6);
-  const homeChartAlbums = buildChartRows('album').slice(0, 6);
+  const homeChartSongs = buildChartRows('song').slice(0, 8);
+  const homeChartAlbums = buildChartRows('album').slice(0, 8);
 
   const reviewFlat = items
     .filter((i) => i.type === reviewType)
     .flatMap((i) =>
       i.reviews.map((r) => ({
         ...r,
+        itemId: i.id,
         itemTitle: i.title,
         itemArtist: i.artist,
         coverLabel: i.type === 'song' ? 'SONG COVER' : 'ALBUM COVER',
@@ -298,6 +421,7 @@ export default function App() {
         ...typeBadge(i.type),
         starsStr: starsStr(r.rating),
         onOpenItem: () => openDetail(i.id),
+        onClickAuthor: () => openUserProfile(r.userId),
       }))
     )
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -306,6 +430,7 @@ export default function App() {
     .flatMap((i) =>
       i.reviews.map((r) => ({
         ...r,
+        itemId: i.id,
         itemTitle: i.title,
         itemArtist: i.artist,
         coverLabel: i.type === 'song' ? 'SONG COVER' : 'ALBUM COVER',
@@ -322,12 +447,12 @@ export default function App() {
   const homeRecentPosts = [...posts]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 3)
-    .map((p) => ({ id: p.id, title: p.title, category: p.category, author: p.author, date: p.date, coverLabel: coverLabelFor(items, p.relatedItemId), imageUrl: artworkFor(items, artworkMap, p.relatedItemId), onOpen: () => openBoardDetail(p.id) }));
+    .map((p) => ({ id: p.id, title: p.title, category: p.category, author: p.author, date: p.date, ...boardCoverFor(p.content), onOpen: () => openBoardDetail(p.id), onClickAuthor: () => openUserProfile(p.author) }));
 
   const boardFiltered = boardFilter === '전체' ? posts : posts.filter((p) => p.category === boardFilter);
   const boardList = [...boardFiltered]
     .sort((a, b) => b.date.localeCompare(a.date))
-    .map((p) => ({ id: p.id, title: p.title, category: p.category, author: p.author, date: p.date, coverLabel: coverLabelFor(items, p.relatedItemId), imageUrl: artworkFor(items, artworkMap, p.relatedItemId), onOpen: () => openBoardDetail(p.id) }));
+    .map((p) => ({ id: p.id, title: p.title, category: p.category, author: p.author, date: p.date, ...boardCoverFor(p.content), onOpen: () => openBoardDetail(p.id), onClickAuthor: () => openUserProfile(p.author) }));
 
   const boardDetailObj = boardDetailId ? posts.find((p) => p.id === boardDetailId) : null;
   const boardDetail = boardDetailObj
@@ -336,37 +461,61 @@ export default function App() {
         category: boardDetailObj.category,
         author: boardDetailObj.author,
         date: boardDetailObj.date,
-        content: boardDetailObj.content,
-        coverLabel: coverLabelFor(items, boardDetailObj.relatedItemId),
-        imageUrl: artworkFor(items, artworkMap, boardDetailObj.relatedItemId),
+        content: normalizePostContent(boardDetailObj.content),
+        ...boardCoverFor(boardDetailObj.content),
         canEdit: !!(user && boardDetailObj.author === user.id),
+        onClickAuthor: () => openUserProfile(boardDetailObj.author),
       }
     : null;
 
   const detailItemObj = detailId ? items.find((i) => i.id === detailId) : null;
   const detailAvgVal = detailItemObj ? avg(detailItemObj) : 0;
+  const detailTracklist = useAlbumTracklist(detailItemObj?.itunesId, detailItemObj?.type);
+  const detailRank = detailItemObj
+    ? buildChartRows(detailItemObj.type).find((r) => r.id === detailItemObj.id)?.rank || null
+    : null;
   const detail = detailItemObj
     ? {
         coverLabel: detailItemObj.type === 'song' ? 'SONG COVER' : 'ALBUM COVER',
         imageUrl: artworkFor(items, artworkMap, detailItemObj.id),
         typeLabel: detailItemObj.type === 'song' ? '곡' : '앨범',
+        rank: detailRank,
         title: detailItemObj.title,
         artist: detailItemObj.artist,
         stars: starsStr(detailAvgVal),
         avgFixed: detailAvgVal.toFixed(1),
         releaseDate: detailItemObj.releaseDate,
+        genre: detailItemObj.genre || null,
         reviewCount: detailItemObj.reviews.length,
+        tracklist: detailTracklist,
         reviews: [...detailItemObj.reviews]
           .sort((a, b) => b.date.localeCompare(a.date))
-          .map((r) => ({ id: r.id, starsStr: starsStr(r.rating), text: r.text, userId: r.userId, date: r.date })),
+          .map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            starsStr: starsStr(r.rating),
+            text: r.text,
+            userId: r.userId,
+            date: r.date,
+            canEdit: !!(user && r.userId === user.id),
+            onEdit: () => openEditReview(detailItemObj.id, r),
+            onDelete: () => requestDeleteReview(detailItemObj.id, r.id, r.text),
+            onClickAuthor: () => openUserProfile(r.userId),
+          })),
       }
     : null;
 
-  const myReviews = user
+  // 마이페이지 shows either the signed-in user's own page (myPageUserId unset) or
+  // another author's public page (clicked from a review/post byline) — same layout,
+  // but edit/delete and the admin approval panel only apply to your own page.
+  const profileUserId = myPageUserId || (user ? user.id : null);
+  const isOwnProfile = !!user && profileUserId === user.id;
+
+  const myReviews = profileUserId
     ? items
         .flatMap((i) =>
           i.reviews
-            .filter((r) => r.userId === user.id)
+            .filter((r) => r.userId === profileUserId)
             .map((r) => ({
               id: r.id,
               itemTitle: i.title,
@@ -374,18 +523,43 @@ export default function App() {
               starsStr: starsStr(r.rating),
               text: r.text,
               date: r.date,
-              onEdit: () => openEditReview(i.id, r),
-              onDelete: () => deleteReview(i.id, r.id),
+              onEdit: isOwnProfile ? () => openEditReview(i.id, r) : null,
+              onDelete: isOwnProfile ? () => requestDeleteReview(i.id, r.id, r.text) : null,
             }))
         )
         .sort((a, b) => b.date.localeCompare(a.date))
     : [];
 
-  const myPosts = user
+  const myPosts = profileUserId
     ? posts
-        .filter((p) => p.author === user.id)
+        .filter((p) => p.author === profileUserId)
         .sort((a, b) => b.date.localeCompare(a.date))
-        .map((p) => ({ id: p.id, title: p.title, category: p.category, date: p.date, onEdit: () => openEditPost(p), onDelete: () => deletePost(p.id) }))
+        .map((p) => ({
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          date: p.date,
+          onEdit: isOwnProfile ? () => openEditPost(p) : null,
+          onDelete: isOwnProfile ? () => requestDeletePost(p.id, p.title) : null,
+        }))
+    : [];
+
+  const myGenreStats = profileUserId
+    ? Object.entries(
+        items.reduce((map, i) => {
+          const genre = i.genre || '기타';
+          i.reviews
+            .filter((r) => r.userId === profileUserId)
+            .forEach((r) => {
+              if (!map[genre]) map[genre] = { count: 0, sum: 0 };
+              map[genre].count += 1;
+              map[genre].sum += r.rating;
+            });
+          return map;
+        }, {})
+      )
+        .map(([genre, { count, sum }]) => ({ genre, count, avgFixed: (sum / count).toFixed(1) }))
+        .sort((a, b) => b.count - a.count)
     : [];
 
   const pendingUsersRows = pendingUsers.map((u) => ({ uid: u.uid, nickname: u.nickname, email: u.email, onApprove: () => approveUser(u.uid) }));
@@ -400,7 +574,7 @@ export default function App() {
 
       {user && !user.approved && (
         <div style={{ background: 'rgba(250,36,60,0.15)', borderBottom: '1px solid rgba(250,36,60,0.4)', color: '#ff8a94', fontSize: 13, padding: '10px 20px', textAlign: 'center' }}>
-          가입 승인 대기 중이에요. 관리자가 승인하면 한줄평·게시글 작성이 가능해요.
+          가입 승인 대기 중이에요. 관리자가 승인하면 리뷰·게시글 작성이 가능해요.
         </div>
       )}
 
@@ -423,7 +597,7 @@ export default function App() {
       {view === 'chart' && (
         <ChartView
           sectionPadV={sectionPadV}
-          sectionPadH={sectionPadH}
+          sectionPadH={sectionPadHWide}
           displayFont={displayFont}
           chartType={chartType}
           onSetChartType={setChartType}
@@ -434,7 +608,7 @@ export default function App() {
       {view === 'reviews' && (
         <ReviewsView
           sectionPadV={sectionPadV}
-          sectionPadH={sectionPadH}
+          sectionPadH={sectionPadHWide}
           displayFont={displayFont}
           reviewType={reviewType}
           onSetReviewType={setReviewType}
@@ -446,12 +620,12 @@ export default function App() {
       {view === 'board' && (
         <BoardView
           sectionPadV={sectionPadV}
-          sectionPadH={sectionPadH}
+          sectionPadH={sectionPadHWide}
           displayFont={displayFont}
           boardDetail={boardDetail}
           onBoardBack={onBoardBack}
           onEditBoardDetail={() => boardDetailObj && openEditPost(boardDetailObj)}
-          onDeleteBoardDetail={() => boardDetailObj && deletePost(boardDetailObj.id)}
+          onDeleteBoardDetail={() => boardDetailObj && requestDeletePost(boardDetailObj.id, boardDetailObj.title)}
           boardFilter={boardFilter}
           onSetBoardFilter={setBoardFilter}
           boardList={boardList}
@@ -462,20 +636,22 @@ export default function App() {
       {view === 'backoffice' && (
         <BackofficeView
           sectionPadV={sectionPadV}
-          sectionPadH={sectionPadH}
+          sectionPadH={sectionPadHWide}
           displayFont={displayFont}
-          user={user}
+          profileNickname={profileUserId}
+          isOwnProfile={isOwnProfile}
           onLoginClick={onLoginClick}
           myReviews={myReviews}
           myPosts={myPosts}
-          isAdmin={!!(user && user.isAdmin)}
+          myGenreStats={myGenreStats}
+          isAdmin={isOwnProfile && !!(user && user.isAdmin)}
           pendingUsers={pendingUsersRows}
         />
       )}
 
       <Footer />
 
-      <DetailOverlay sectionPadV={sectionPadV} sectionPadH={sectionPadH} displayFont={displayFont} detail={detail} onClose={onCloseDetail} onWriteReview={() => openDetailReviewForm(detailId)} />
+      <DetailOverlay sectionPadV={sectionPadV} sectionPadH={sectionPadHWide} displayFont={displayFont} detail={detail} onClose={onCloseDetail} onWriteReview={() => openDetailReviewForm(detailId)} />
 
       <LoginModal
         show={showLogin}
@@ -495,7 +671,7 @@ export default function App() {
 
       <ReviewFormModal
         show={showReviewForm}
-        title={editingReviewId ? '한줄평 수정' : '한줄평 작성'}
+        title={editingReviewId ? '리뷰 수정' : '리뷰 작성'}
         showSearch={!reviewFormTargetId && !editingReviewId}
         searchType={reviewSearchType}
         onSearchTypeChange={(type) => {
@@ -537,10 +713,32 @@ export default function App() {
         onCategoryChange={(e) => setPostCategoryInput(e.target.value)}
         titleInput={postTitleInput}
         onTitleChange={(e) => setPostTitleInput(e.target.value)}
-        contentInput={postContentInput}
-        onContentChange={(e) => setPostContentInput(e.target.value)}
+        blocks={postBlocks}
+        onBlockTextChange={updatePostBlockText}
+        onRemoveBlock={removePostBlock}
+        onAddItem={openPostItemSearch}
         onSubmit={onSubmitPost}
         onClose={onClosePostForm}
+      />
+
+      <ItemSearchModal
+        show={showPostItemSearch}
+        entityType={postItemSearchType}
+        onEntityChange={setPostItemSearchType}
+        query={postItemSearchQuery}
+        onQueryChange={setPostItemSearchQuery}
+        results={postItemSearchResults}
+        loading={postItemSearchLoading}
+        error={postItemSearchError}
+        onAdd={onPickPostItem}
+        onClose={() => setShowPostItemSearch(false)}
+      />
+
+      <ConfirmModal
+        show={!!pendingDelete}
+        message={pendingDelete?.message}
+        onConfirm={pendingDelete?.onConfirm}
+        onCancel={cancelPendingDelete}
       />
 
     </div>

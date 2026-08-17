@@ -13,6 +13,7 @@ function normalize(result, type) {
     releaseDate: (result.releaseDate || '').slice(0, 10),
     artworkUrl: upscaleArtwork(result.artworkUrl100 || result.artworkUrl60),
     previewUrl: result.previewUrl || null,
+    genre: result.primaryGenreName || null,
   };
 }
 
@@ -38,5 +39,24 @@ export function fetchArtwork(title, artist, type) {
     .then((results) => results[0]?.artworkUrl || null)
     .catch(() => null);
   artworkCache.set(key, promise);
+  return promise;
+}
+
+const tracklistCache = new Map();
+
+export function fetchAlbumTracklist(collectionId) {
+  if (!collectionId) return Promise.resolve([]);
+  if (tracklistCache.has(collectionId)) return tracklistCache.get(collectionId);
+  const params = new URLSearchParams({ id: String(collectionId), entity: 'song' });
+  const promise = fetch(`https://itunes.apple.com/lookup?${params.toString()}`)
+    .then((res) => (res.ok ? res.json() : { results: [] }))
+    .then((data) =>
+      (data.results || [])
+        .filter((r) => r.wrapperType === 'track' && r.kind === 'song')
+        .sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0))
+        .map((r) => ({ trackNumber: r.trackNumber, title: r.trackName }))
+    )
+    .catch(() => []);
+  tracklistCache.set(collectionId, promise);
   return promise;
 }

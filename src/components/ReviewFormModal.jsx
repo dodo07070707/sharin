@@ -25,6 +25,7 @@ export default function ReviewFormModal({
   onClose,
 }) {
   if (!show) return null;
+  const canSubmit = !!textInput.trim();
 
   return (
     <div
@@ -408,7 +409,7 @@ export default function ReviewFormModal({
           />
         </div>
 
-        {/* 한줄평 */}
+        {/* 리뷰 */}
         <textarea
           value={textInput}
           onChange={onTextChange}
@@ -439,15 +440,16 @@ export default function ReviewFormModal({
         >
           <button
             onClick={onSubmit}
+            disabled={!canSubmit}
             style={{
               flex: 1,
-              background: "#fa243c",
+              background: canSubmit ? "#fa243c" : "rgba(250,36,60,0.35)",
               color: "#ffffff",
               border: "none",
               borderRadius: 9999,
               padding: "11px 22px",
               fontSize: 17,
-              cursor: "pointer",
+              cursor: canSubmit ? "pointer" : "not-allowed",
             }}
           >
             등록

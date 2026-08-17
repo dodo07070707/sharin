@@ -1,4 +1,5 @@
 import CoverThumb from "./CoverThumb";
+import { itemHref, navClick, rankBadgeColor } from "../utils";
 
 export default function ChartView({
   sectionPadV,
@@ -62,9 +63,10 @@ export default function ChartView({
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {chartList.map((row) => (
-          <div
+          <a
             key={row.id}
-            onClick={row.onOpen}
+            href={itemHref(row.id)}
+            onClick={navClick(row.onOpen)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -74,22 +76,35 @@ export default function ChartView({
               borderRadius: 10,
               padding: "16px 24px",
               cursor: "pointer",
+              textDecoration: "none",
+              color: "inherit",
             }}
           >
-            <div
-              style={{
-                fontSize: 21,
-                fontWeight: 600,
-                color: "#98989d",
-                width: 32,
-                flex: "none",
-              }}
-            >
-              {row.rank}
+            <div style={{ width: 32, flex: "none", display: "flex", justifyContent: "center" }}>
+              {rankBadgeColor(row.rank) ? (
+                <span
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: "50%",
+                    background: rankBadgeColor(row.rank),
+                    color: "#1d1d1f",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {row.rank}
+                </span>
+              ) : (
+                <span style={{ fontSize: 21, fontWeight: 600, color: "#98989d" }}>{row.rank}</span>
+              )}
             </div>
             <CoverThumb
               size={56}
-              radius={30}
+              radius={12}
               fontSize={8}
               label={row.coverLabel}
               imageUrl={row.imageUrl}
@@ -106,7 +121,7 @@ export default function ChartView({
                 리뷰 {row.reviewCount}개
               </div>
             </div>
-          </div>
+          </a>
         ))}
       </div>
     </div>

@@ -1,6 +1,7 @@
 import CoverThumb from "./CoverThumb";
+import { itemHref, boardHref, navClick, rankBadgeColor } from "../utils";
 
-function ChartStrip({ title, rows, sectionPadH }) {
+function ChartStrip({ title, rows }) {
   return (
     <div style={{ marginTop: title === "TOP 곡" ? 12 : 0 }}>
       <div
@@ -15,21 +16,22 @@ function ChartStrip({ title, rows, sectionPadH }) {
       </div>
       <div
         style={{
-          display: "flex",
-          gap: 16,
-          overflowX: "auto",
-          padding: `12px ${sectionPadH} 24px`,
-          margin: `0 calc(-1 * ${sectionPadH})`,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+          gap: 20,
+          padding: "12px 0 24px",
         }}
       >
         {rows.map((row) => (
-          <div
+          <a
             key={row.id}
-            onClick={row.onOpen}
-            style={{ flex: "none", width: 140, cursor: "pointer" }}
+            href={itemHref(row.id)}
+            onClick={navClick(row.onOpen)}
+            style={{ minWidth: 0, cursor: "pointer", display: "block", textDecoration: "none", color: "inherit" }}
           >
+            <div style={{ width: "100%", aspectRatio: "1 / 1" }}>
             <CoverThumb
-              size={140}
+              size="100%"
               radius={10}
               fontSize={7}
               label={row.coverLabel}
@@ -43,22 +45,45 @@ function ChartStrip({ title, rows, sectionPadH }) {
                     background: row.ratingBg,
                     color: row.ratingColor,
                     border: row.ratingBorder,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     borderRadius: 6,
-                    padding: "2px 6px",
+                    padding: "3px 7px",
                     whiteSpace: "nowrap",
                   }}
                 >
                   ★ {row.avgFixed}
                 </div>
               }
-            />
+            >
+              {rankBadgeColor(row.rank) && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    left: 8,
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: rankBadgeColor(row.rank),
+                    color: "#1d1d1f",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {row.rank}
+                </div>
+              )}
+            </CoverThumb>
+            </div>
             <div
               style={{
                 marginTop: 10,
                 color: "#cccccc",
-                fontSize: 12,
+                fontSize: 13,
                 marginBottom: 2,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
@@ -70,7 +95,7 @@ function ChartStrip({ title, rows, sectionPadH }) {
             <div
               style={{
                 color: "#ffffff",
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 600,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
@@ -79,7 +104,7 @@ function ChartStrip({ title, rows, sectionPadH }) {
             >
               {row.title}
             </div>
-          </div>
+          </a>
         ))}
       </div>
     </div>
@@ -144,16 +169,8 @@ export default function HomeView({
             전체보기 →
           </span>
         </div>
-        <ChartStrip
-          title="TOP 곡"
-          rows={homeChartSongs}
-          sectionPadH={sectionPadH}
-        />
-        <ChartStrip
-          title="TOP 앨범"
-          rows={homeChartAlbums}
-          sectionPadH={sectionPadH}
-        />
+        <ChartStrip title="TOP 곡" rows={homeChartSongs} />
+        <ChartStrip title="TOP 앨범" rows={homeChartAlbums} />
       </div>
 
       <div
@@ -184,16 +201,20 @@ export default function HomeView({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {homeRecentReviews.map((rv) => (
-                <div
+                <a
                   key={rv.id}
-                  onClick={rv.onOpenItem}
+                  href={itemHref(rv.itemId)}
+                  onClick={navClick(rv.onOpenItem)}
                   style={{
                     display: "flex",
+                    alignItems: "center",
                     gap: 12,
                     padding: 12,
                     border: "1px solid rgba(255,255,255,0.15)",
                     borderRadius: 10,
                     cursor: "pointer",
+                    textDecoration: "none",
+                    color: "inherit",
                   }}
                 >
                   <CoverThumb
@@ -261,10 +282,10 @@ export default function HomeView({
                         textOverflow: "ellipsis",
                       }}
                     >
-                      "{rv.text}"
+                      {rv.text}
                     </div>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           </div>
@@ -289,16 +310,20 @@ export default function HomeView({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {homeRecentPosts.map((pt) => (
-                <div
+                <a
                   key={pt.id}
-                  onClick={pt.onOpen}
+                  href={boardHref(pt.id)}
+                  onClick={navClick(pt.onOpen)}
                   style={{
                     display: "flex",
+                    alignItems: "center",
                     gap: 12,
                     padding: 12,
                     border: "1px solid rgba(255,255,255,0.15)",
                     borderRadius: 10,
                     cursor: "pointer",
+                    textDecoration: "none",
+                    color: "inherit",
                   }}
                 >
                   <CoverThumb
@@ -344,10 +369,20 @@ export default function HomeView({
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "#98989d" }}>
-                      {pt.author} · {pt.date}
+                      <span
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          pt.onClickAuthor();
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {pt.author}
+                      </span>{" "}
+                      · {pt.date}
                     </div>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           </div>

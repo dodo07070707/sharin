@@ -1,4 +1,5 @@
 import CoverThumb from "./CoverThumb";
+import { itemHref, navClick } from "../utils";
 
 export default function ReviewsView({
   sectionPadV,
@@ -43,7 +44,7 @@ export default function ReviewsView({
             cursor: "pointer",
           }}
         >
-          한줄평 작성
+          리뷰 작성
         </button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
@@ -80,36 +81,42 @@ export default function ReviewsView({
               padding: "20px 24px",
             }}
           >
-            <div onClick={rv.onOpenItem} style={{ cursor: "pointer" }}>
+            <a href={itemHref(rv.itemId)} onClick={navClick(rv.onOpenItem)} style={{ cursor: "pointer" }}>
               <CoverThumb
                 size={48}
-                radius={30}
+                radius={12}
                 fontSize={6}
                 label={rv.coverLabel}
                 imageUrl={rv.imageUrl}
               />
-            </div>
+            </a>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                onClick={rv.onOpenItem}
+              <a
+                href={itemHref(rv.itemId)}
+                onClick={navClick(rv.onOpenItem)}
                 style={{
+                  display: "block",
                   fontSize: 14,
                   fontWeight: 600,
                   color: "#f5f5f7",
                   marginBottom: 8,
                   cursor: "pointer",
+                  textDecoration: "none",
                 }}
               >
                 {rv.itemTitle} · {rv.itemArtist}
-              </div>
+              </a>
               <div style={{ color: "#fa243c", fontSize: 14, marginBottom: 8 }}>
                 {rv.starsStr}
               </div>
               <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10 }}>
-                "{rv.text}"
+                {rv.text}
               </div>
               <div style={{ color: "#98989d", fontSize: 12 }}>
-                {rv.userId} · {rv.date}
+                <span onClick={rv.onClickAuthor} style={{ cursor: "pointer" }}>
+                  {rv.userId}
+                </span>{" "}
+                · {rv.date}
               </div>
             </div>
           </div>

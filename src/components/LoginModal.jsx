@@ -41,7 +41,7 @@ export default function LoginModal({
           {isSignup ? "회원가입" : "로그인"}
         </h2>
         <p style={{ fontSize: 14, color: "#98989d", margin: "0 0 20px" }}>
-          친구들만 한줄평과 게시글을 남길 수 있어요.
+          친구들만 리뷰와 게시글을 남길 수 있어요.
         </p>
 
         {isSignup && (

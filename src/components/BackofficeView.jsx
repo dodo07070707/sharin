@@ -169,7 +169,7 @@ export default function BackofficeView({
                     {rv.itemTitle} · {rv.itemArtist}
                   </div>
                   <div
-                    style={{ color: "#fa243c", fontSize: 14, marginBottom: 8 }}
+                    style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}
                   >
                     {rv.starsStr}
                   </div>

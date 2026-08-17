@@ -14,7 +14,16 @@ export function useItemsCollection() {
     return unsub;
   }, []);
 
-  const addItem = (item) => setDoc(doc(db, 'items', item.id), item);
+  // Writing a brand-new item and its first review as one setDoc(..., reviews: [nr])
+  // is a race: if the item's doc actually already exists server-side (another review
+  // landed first, or this client's own `items` snapshot just hasn't caught up yet),
+  // a plain setDoc silently wipes out every review already on it. arrayUnion + merge
+  // makes this safe either way — it appends instead of overwriting when the doc (and
+  // its reviews array) already exists, and behaves like a normal create when it doesn't.
+  const addItem = (item) => {
+    const { reviews, ...rest } = item;
+    return setDoc(doc(db, 'items', item.id), { ...rest, reviews: arrayUnion(...reviews) }, { merge: true });
+  };
   const addReview = (itemId, review) => updateDoc(doc(db, 'items', itemId), { reviews: arrayUnion(review) });
   const replaceReviews = (itemId, reviews) => updateDoc(doc(db, 'items', itemId), { reviews });
 

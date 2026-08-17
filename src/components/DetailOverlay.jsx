@@ -19,6 +19,7 @@ export default function DetailOverlay({
         coverUrl: detail.imageUrl,
         starsStr: rv.starsStr,
         rating: rv.rating,
+        ratingColor: rv.ratingColor,
         authorId: rv.userId,
         text: rv.text,
       });
@@ -136,7 +137,7 @@ export default function DetailOverlay({
         <div style={{ fontSize: 17, color: "#c7c7cc", marginBottom: 16 }}>
           {detail.artist}
         </div>
-        <div style={{ color: "#fa243c", fontSize: 17, marginBottom: 6 }}>
+        <div style={{ color: detail.ratingColor, fontSize: 17, marginBottom: 6 }}>
           {detail.stars} {detail.avgFixed}
         </div>
         <div style={{ fontSize: 12, color: "#98989d", marginBottom: 24 }}>
@@ -239,7 +240,7 @@ export default function DetailOverlay({
                 padding: "20px 24px",
               }}
             >
-              <div style={{ color: "#fa243c", fontSize: 14, marginBottom: 8 }}>
+              <div style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}>
                 {rv.starsStr}
               </div>
               <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10 }}>

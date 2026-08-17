@@ -110,7 +110,7 @@ function drawBlurredBackground(ctx, img, w, h) {
   ctx.fillRect(0, 0, w, h);
 }
 
-function drawCard({ title, artist, img, logo, starsStr, ratingFixed, authorId, text }) {
+function drawCard({ title, artist, img, logo, starsStr, ratingFixed, ratingColor, authorId, text }) {
   // A scratch context (size doesn't matter — only used to measure text) decides how
   // tall the real canvas needs to be, so the card hugs its content instead of
   // centering it inside a taller fixed canvas with empty top/bottom margin.
@@ -212,7 +212,7 @@ function drawCard({ title, artist, img, logo, starsStr, ratingFixed, authorId, t
   ctx.fillText(artist, textX, ty);
   ty += 54;
 
-  ctx.fillStyle = RED;
+  ctx.fillStyle = ratingColor || RED;
   ctx.font = `600 32px ${FONT}`;
   ctx.fillText(`${starsStr} ${ratingFixed}`, textX, ty);
   ty += 52;
@@ -243,7 +243,7 @@ function drawCard({ title, artist, img, logo, starsStr, ratingFixed, authorId, t
   return canvas;
 }
 
-export async function createReviewShareCard({ title, artist, coverUrl, starsStr, rating, authorId, text }) {
+export async function createReviewShareCard({ title, artist, coverUrl, starsStr, rating, ratingColor, authorId, text }) {
   if (document.fonts && document.fonts.ready) {
     await document.fonts.ready;
   }
@@ -255,6 +255,7 @@ export async function createReviewShareCard({ title, artist, coverUrl, starsStr,
     logo,
     starsStr,
     ratingFixed: rating.toFixed(1),
+    ratingColor,
     authorId,
     text,
   });

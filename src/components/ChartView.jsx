@@ -114,7 +114,7 @@ export default function ChartView({
               <div style={{ fontSize: 14, color: "#98989d" }}>{row.artist}</div>
             </div>
             <div style={{ textAlign: "right", flex: "none" }}>
-              <div style={{ color: "#fa243c", fontSize: 14 }}>
+              <div style={{ color: row.ratingColor, fontSize: 14 }}>
                 {row.starsStr} {row.avgFixed}
               </div>
               <div style={{ fontSize: 12, color: "#98989d" }}>

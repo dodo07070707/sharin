@@ -1,0 +1,19 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+::selection {
+  background: #fa243c;
+  color: #ffffff;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}

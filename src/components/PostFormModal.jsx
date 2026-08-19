@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useLayoutEffect } from "react";
 import { BOARD_CATEGORIES } from "../data";
 import PostItemCard from "./PostItemCard";
 
@@ -66,6 +66,17 @@ export default function PostFormModal({
 }) {
   const textareaRefs = useRef({});
 
+  // Grows each textarea to fit its content instead of scrolling internally.
+  // Runs after every render so it also catches programmatic edits (e.g.
+  // makeSelectionBig) that don't go through the textarea's own onChange.
+  useLayoutEffect(() => {
+    Object.values(textareaRefs.current).forEach((el) => {
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    });
+  });
+
   // Wraps the currently selected text in a block's textarea with [[...]] — BoardView
   // renders that as larger text. A no-op if nothing is selected.
   const makeSelectionBig = (blockId) => {
@@ -84,29 +95,6 @@ export default function PostFormModal({
       data-screen-label="게시글 작성"
       style={{ padding: `${sectionPadV} ${sectionPadH}` }}
     >
-      <style>{`
-      .post-textarea-scroll::-webkit-scrollbar {
-        width: 5px;
-      }
-
-      .post-textarea-scroll::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .post-textarea-scroll::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.18);
-        border-radius: 999px;
-      }
-
-      .post-textarea-scroll::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
-
-      .post-textarea-scroll {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
-      }
-    `}</style>
       <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <span
           onClick={onClose}
@@ -188,7 +176,6 @@ export default function PostFormModal({
                     ref={(el) => {
                       textareaRefs.current[block.id] = el;
                     }}
-                    className="post-textarea-scroll"
                     value={block.text}
                     onChange={(e) =>
                       onBlockTextChange(block.id, e.target.value)
@@ -203,7 +190,8 @@ export default function PostFormModal({
                       fontSize: 17,
                       lineHeight: 1.6,
                       outline: "none",
-                      resize: "vertical",
+                      resize: "none",
+                      overflow: "hidden",
                       color: "#f5f5f7",
                       background: "transparent",
                       boxSizing: "border-box",

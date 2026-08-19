@@ -1,5 +1,5 @@
 import CoverThumb from "./CoverThumb";
-import { itemHref, navClick } from "../utils";
+import { itemHref, navClick, reviewTimestampStr } from "../utils";
 
 export default function ReviewsView({
   sectionPadV,
@@ -116,7 +116,7 @@ export default function ReviewsView({
                 <span onClick={rv.onClickAuthor} style={{ cursor: "pointer" }}>
                   {rv.userId}
                 </span>{" "}
-                · {rv.date}
+                · {reviewTimestampStr(rv)}
               </div>
             </div>
           </div>

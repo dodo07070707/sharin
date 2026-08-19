@@ -1,7 +1,7 @@
 import CoverThumb from "./CoverThumb";
 import PostItemCard from "./PostItemCard";
 import { BOARD_CATEGORIES } from "../data";
-import { boardHref, navClick } from "../utils";
+import { boardHref, itemHref, navClick, parseBigText } from "../utils";
 
 export default function BoardView({
   sectionPadV,
@@ -15,12 +15,13 @@ export default function BoardView({
   onSetBoardFilter,
   boardList,
   onOpenPostFormNew,
+  onOpenItem,
 }) {
   if (boardDetail) {
     return (
       <div
         data-screen-label="게시글"
-        style={{ padding: `${sectionPadV} ${sectionPadH}` }}
+        style={{ padding: `${sectionPadV} calc(${sectionPadH} * 2 / 3)` }}
       >
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <span
@@ -68,13 +69,26 @@ export default function BoardView({
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {boardDetail.content.map((block, i) =>
                 block.type === "item" ? (
-                  <PostItemCard key={i} block={block} />
+                  <PostItemCard
+                    key={i}
+                    block={block}
+                    href={itemHref(`itunes${block.itemId}`)}
+                    onOpen={() => onOpenItem(`itunes${block.itemId}`)}
+                  />
                 ) : (
                   <p
                     key={i}
                     style={{ fontSize: 17, lineHeight: 1.47, whiteSpace: "pre-wrap", margin: 0 }}
                   >
-                    {block.text}
+                    {parseBigText(block.text).map((seg, j) =>
+                      seg.big ? (
+                        <span key={j} style={{ fontSize: "1.6em", fontWeight: 700 }}>
+                          {seg.text}
+                        </span>
+                      ) : (
+                        seg.text
+                      )
+                    )}
                   </p>
                 )
               )}

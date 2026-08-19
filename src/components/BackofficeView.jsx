@@ -1,7 +1,108 @@
+import CoverThumb from "./CoverThumb";
+import { itemHref, navClick } from "../utils";
+
+function ReviewCard({ rv }) {
+  return (
+    <div
+      style={{
+        background: "#1c1c1e",
+        border: "1px solid rgba(255,255,255,0.15)",
+        borderRadius: 10,
+        padding: "20px 24px",
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 16,
+        flexWrap: "wrap",
+      }}
+    >
+      <div style={{ display: "flex", gap: 14, flex: 1, minWidth: 200 }}>
+        <a href={itemHref(rv.itemId)} onClick={navClick(rv.onOpenItem)} style={{ flex: "none", cursor: "pointer" }}>
+          <CoverThumb size={56} radius={12} fontSize={7} label={rv.coverLabel} imageUrl={rv.imageUrl} />
+        </a>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+            <span
+              style={{
+                background: rv.typeBg,
+                color: rv.typeColor,
+                border: rv.typeBorder,
+                fontSize: 10,
+                fontWeight: 600,
+                borderRadius: 5,
+                padding: "2px 6px",
+              }}
+            >
+              {rv.typeText}
+            </span>
+            <span style={{ fontSize: 12, color: "#98989d" }}>
+              {rv.itemTitle} · {rv.itemArtist}
+            </span>
+          </div>
+          <div style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}>
+            {rv.starsStr} {rv.rating.toFixed(1)}
+          </div>
+          <div style={{ fontSize: 17 }}>{rv.text}</div>
+        </div>
+      </div>
+      {rv.onEdit && (
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <button
+            onClick={rv.onEdit}
+            style={{
+              background: "#2c2c2e",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 15px",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            수정
+          </button>
+          <button
+            onClick={rv.onDelete}
+            style={{
+              background: "transparent",
+              color: "#98989d",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 8,
+              padding: "8px 15px",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewColumn({ title, reviews }) {
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#98989d", marginBottom: 12 }}>
+        {title}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {reviews.map((rv) => (
+          <ReviewCard key={rv.id} rv={rv} />
+        ))}
+        {reviews.length === 0 && (
+          <p style={{ color: "#98989d", fontSize: 14 }}>아직 작성한 리뷰가 없어요.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function BackofficeView({
   sectionPadV,
   sectionPadH,
   displayFont,
+  homeColGrid,
   profileNickname,
   isOwnProfile,
   onLoginClick,
@@ -12,6 +113,8 @@ export default function BackofficeView({
   pendingUsers,
 }) {
   const reviewsLabel = isOwnProfile ? "내가 쓴 리뷰" : `${profileNickname}님이 쓴 리뷰`;
+  const songReviews = myReviews.filter((rv) => rv.itemType === "song");
+  const albumReviews = myReviews.filter((rv) => rv.itemType === "album");
   const postsLabel = isOwnProfile ? "내가 쓴 게시글" : `${profileNickname}님이 쓴 게시글`;
   return (
     <div
@@ -142,80 +245,14 @@ export default function BackofficeView({
           </h2>
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
+              display: "grid",
+              gridTemplateColumns: homeColGrid,
+              gap: 24,
               marginBottom: 48,
             }}
           >
-            {myReviews.map((rv) => (
-              <div
-                key={rv.id}
-                style={{
-                  background: "#1c1c1e",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 10,
-                  padding: "20px 24px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 16,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div
-                    style={{ fontSize: 12, color: "#98989d", marginBottom: 6 }}
-                  >
-                    {rv.itemTitle} · {rv.itemArtist}
-                  </div>
-                  <div
-                    style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}
-                  >
-                    {rv.starsStr}
-                  </div>
-                  <div style={{ fontSize: 17 }}>{rv.text}</div>
-                </div>
-                {rv.onEdit && (
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "flex-start" }}
-                  >
-                    <button
-                      onClick={rv.onEdit}
-                      style={{
-                        background: "#2c2c2e",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "8px 15px",
-                        fontSize: 14,
-                        cursor: "pointer",
-                      }}
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={rv.onDelete}
-                      style={{
-                        background: "transparent",
-                        color: "#98989d",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        borderRadius: 8,
-                        padding: "8px 15px",
-                        fontSize: 14,
-                        cursor: "pointer",
-                      }}
-                    >
-                      삭제
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {myReviews.length === 0 && (
-              <p style={{ color: "#98989d", fontSize: 14 }}>
-                아직 작성한 리뷰가 없어요.
-              </p>
-            )}
+            <ReviewColumn title="곡" reviews={songReviews} />
+            <ReviewColumn title="앨범" reviews={albumReviews} />
           </div>
           <h2 style={{ fontSize: 21, fontWeight: 600, margin: "0 0 16px" }}>
             {postsLabel}

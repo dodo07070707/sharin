@@ -48,7 +48,7 @@ export default function App() {
   const [reviewSearchQuery, setReviewSearchQuery] = useState('');
   const [reviewSearchSelected, setReviewSearchSelected] = useState(null);
 
-  const [showPostForm, setShowPostForm] = useState(false);
+  const [postFormReturnView, setPostFormReturnView] = useState('board');
   const [editingPostId, setEditingPostId] = useState(null);
   const [postTitleInput, setPostTitleInput] = useState('');
   const [postCategoryInput, setPostCategoryInput] = useState('월간결산');
@@ -56,10 +56,35 @@ export default function App() {
   const [showPostItemSearch, setShowPostItemSearch] = useState(false);
   const [postItemSearchType, setPostItemSearchType] = useState('song');
   const [postItemSearchQuery, setPostItemSearchQuery] = useState('');
-  const [postItemInsertAfter, setPostItemInsertAfter] = useState(null);
+  const [postItemInsertIndex, setPostItemInsertIndex] = useState(null);
 
   const { items, addItem, addReview, replaceReviews } = useItemsCollection();
   const { posts, addPost, updatePost, removePost } = usePostsCollection();
+
+  // Reviews written before `createdAt` existed only have a day-precision `date`, so
+  // several same-day reviews can't be told apart for "newest first" sorting — they'd
+  // just keep whatever order they happened to load in. This backfills a synthetic
+  // createdAt (day + position within the item's reviews array, which arrayUnion always
+  // appends to in write order) so those ties resolve consistently.
+  //
+  // A non-admin can only do this for their own reviews (the same write this app already
+  // lets them make when editing their own review), which leaves everyone else's legacy
+  // reviews untouched — on a shared list mixing every author, that means most entries
+  // still tie on date-only comparison and keep looking unsorted. The admin is trusted
+  // with broader Firestore writes already (approving signups), so backfills every
+  // review missing createdAt, fixing the shared lists in one pass.
+  useEffect(() => {
+    if (!user || !user.approved) return;
+    const needsBackfill = (r) => !r.createdAt && (user.isAdmin || r.userId === user.id);
+    items.forEach((item) => {
+      if (!item.reviews.some(needsBackfill)) return;
+      const backfilled = item.reviews.map((r, idx) =>
+        needsBackfill(r) ? { ...r, createdAt: Date.parse(r.date) + idx, createdAtApprox: true } : r
+      );
+      replaceReviews(item.id, backfilled);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, user]);
 
   const { users: allUsers, approveUser } = usePendingUsers(!!(user && user.isAdmin));
   const pendingUsers = allUsers.filter((u) => !u.approved);
@@ -295,20 +320,29 @@ export default function App() {
   const newBlockId = () => 'b' + crypto.randomUUID();
   const openPostFormNew = () => {
     if (!requireApproved()) return;
-    setShowPostForm(true);
+    setPostFormReturnView(view);
+    setView('postForm');
     setEditingPostId(null);
     setPostTitleInput('');
     setPostCategoryInput('월간결산');
     setPostBlocks([{ id: newBlockId(), type: 'text', text: '' }]);
   };
   const openEditPost = (post) => {
-    setShowPostForm(true);
+    setPostFormReturnView(view);
+    setView('postForm');
     setEditingPostId(post.id);
     setPostTitleInput(post.title);
     setPostCategoryInput(post.category);
-    setPostBlocks(normalizePostContent(post.content).map((b) => ({ id: newBlockId(), ...b })));
+    // A post that ends on a song/album embed needs a trailing text block, otherwise
+    // there's nowhere to type after it (onSubmitPost strips trailing-empty ones on save,
+    // so a post genuinely ending on an item arrives here with none).
+    const loadedBlocks = normalizePostContent(post.content).map((b) => ({ id: newBlockId(), ...b }));
+    if (loadedBlocks.length === 0 || loadedBlocks[loadedBlocks.length - 1].type === 'item') {
+      loadedBlocks.push({ id: newBlockId(), type: 'text', text: '' });
+    }
+    setPostBlocks(loadedBlocks);
   };
-  const onClosePostForm = () => { setShowPostForm(false); setShowPostItemSearch(false); };
+  const onClosePostForm = () => { setView(postFormReturnView); setShowPostItemSearch(false); };
   const deletePost = (id) => {
     removePost(id);
     setBoardDetailId((prev) => (prev === id ? null : prev));
@@ -318,16 +352,22 @@ export default function App() {
     const next = bs.filter((b) => b.id !== id);
     return next.length ? next : [{ id: newBlockId(), type: 'text', text: '' }];
   });
-  const openPostItemSearch = (afterId) => {
-    setPostItemInsertAfter(afterId);
+  const insertPostTextBlock = (insertIndex) => {
+    setPostBlocks((bs) => {
+      const next = [...bs];
+      next.splice(insertIndex, 0, { id: newBlockId(), type: 'text', text: '' });
+      return next;
+    });
+  };
+  const openPostItemSearch = (insertIndex) => {
+    setPostItemInsertIndex(insertIndex);
     setPostItemSearchType('song');
     setPostItemSearchQuery('');
     setShowPostItemSearch(true);
   };
   const onPickPostItem = (result) => {
     setPostBlocks((bs) => {
-      const idx = bs.findIndex((b) => b.id === postItemInsertAfter);
-      const insertAt = idx === -1 ? bs.length : idx + 1;
+      const insertAt = postItemInsertIndex ?? bs.length;
       const itemBlock = {
         id: newBlockId(),
         type: 'item',
@@ -359,7 +399,7 @@ export default function App() {
     } else {
       addPost({ title: postTitleInput.trim(), category: postCategoryInput, content, author: user.id, date: todayStr() });
     }
-    setShowPostForm(false);
+    setView(postFormReturnView);
   };
   const openBoardDetail = (id) => {
     window.history.pushState({}, '', boardHref(id));
@@ -530,18 +570,25 @@ export default function App() {
             .filter((r) => r.userId === profileUserId)
             .map((r) => ({
               id: r.id,
+              itemId: i.id,
+              itemType: i.type,
               itemTitle: i.title,
               itemArtist: i.artist,
+              coverLabel: i.type === 'song' ? 'SONG COVER' : 'ALBUM COVER',
+              imageUrl: artworkFor(items, artworkMap, i.id),
+              ...typeBadge(i.type),
+              rating: r.rating,
               starsStr: starsStr(r.rating),
               ...ratingBadge(r.rating),
               text: r.text,
               date: r.date,
               createdAt: r.createdAt,
+              onOpenItem: () => openDetail(i.id),
               onEdit: isOwnProfile ? () => openEditReview(i.id, r) : null,
               onDelete: isOwnProfile ? () => requestDeleteReview(i.id, r.id, r.text) : null,
             }))
         )
-        .sort(byNewestReview)
+        .sort((a, b) => b.rating - a.rating)
     : [];
 
   const myPosts = profileUserId
@@ -644,6 +691,7 @@ export default function App() {
           onSetBoardFilter={setBoardFilter}
           boardList={boardList}
           onOpenPostFormNew={openPostFormNew}
+          onOpenItem={openDetail}
         />
       )}
 
@@ -652,6 +700,7 @@ export default function App() {
           sectionPadV={sectionPadV}
           sectionPadH={sectionPadHWide}
           displayFont={displayFont}
+          homeColGrid={homeColGrid}
           profileNickname={profileUserId}
           isOwnProfile={isOwnProfile}
           onLoginClick={onLoginClick}
@@ -660,6 +709,26 @@ export default function App() {
           myGenreStats={myGenreStats}
           isAdmin={isOwnProfile && !!(user && user.isAdmin)}
           pendingUsers={pendingUsersRows}
+        />
+      )}
+
+      {view === 'postForm' && (
+        <PostFormModal
+          sectionPadV={sectionPadV}
+          sectionPadH={sectionPadHWide}
+          displayFont={displayFont}
+          title={editingPostId ? '게시글 수정' : '게시글 작성'}
+          categoryInput={postCategoryInput}
+          onCategoryChange={(e) => setPostCategoryInput(e.target.value)}
+          titleInput={postTitleInput}
+          onTitleChange={(e) => setPostTitleInput(e.target.value)}
+          blocks={postBlocks}
+          onBlockTextChange={updatePostBlockText}
+          onRemoveBlock={removePostBlock}
+          onAddItem={openPostItemSearch}
+          onAddText={insertPostTextBlock}
+          onSubmit={onSubmitPost}
+          onClose={onClosePostForm}
         />
       )}
 
@@ -718,21 +787,6 @@ export default function App() {
         onTextChange={(e) => setReviewTextInput(e.target.value)}
         onSubmit={onSubmitReview}
         onClose={onCloseReviewForm}
-      />
-
-      <PostFormModal
-        show={showPostForm}
-        title={editingPostId ? '게시글 수정' : '게시글 작성'}
-        categoryInput={postCategoryInput}
-        onCategoryChange={(e) => setPostCategoryInput(e.target.value)}
-        titleInput={postTitleInput}
-        onTitleChange={(e) => setPostTitleInput(e.target.value)}
-        blocks={postBlocks}
-        onBlockTextChange={updatePostBlockText}
-        onRemoveBlock={removePostBlock}
-        onAddItem={openPostItemSearch}
-        onSubmit={onSubmitPost}
-        onClose={onClosePostForm}
       />
 
       <ItemSearchModal

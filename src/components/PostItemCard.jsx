@@ -1,8 +1,19 @@
 import CoverThumb from "./CoverThumb";
 
-export default function PostItemCard({ block, onRemove }) {
+export default function PostItemCard({ block, onRemove, href, onOpen }) {
+  const Tag = href ? "a" : "div";
   return (
-    <div
+    <Tag
+      href={href}
+      onClick={
+        href
+          ? (e) => {
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              e.preventDefault();
+              onOpen();
+            }
+          : undefined
+      }
       style={{
         display: "flex",
         alignItems: "center",
@@ -11,6 +22,9 @@ export default function PostItemCard({ block, onRemove }) {
         borderRadius: 14,
         background: "rgba(255,255,255,0.06)",
         border: "1px solid rgba(255,255,255,0.12)",
+        textDecoration: "none",
+        color: "inherit",
+        cursor: href ? "pointer" : "default",
       }}
     >
       <CoverThumb
@@ -77,6 +91,6 @@ export default function PostItemCard({ block, onRemove }) {
           삭제
         </button>
       )}
-    </div>
+    </Tag>
   );
 }

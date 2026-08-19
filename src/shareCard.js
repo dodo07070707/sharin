@@ -99,11 +99,11 @@ function drawBlurredBackground(ctx, img, w, h) {
     ctx.fillRect(0, 0, w, h);
     return;
   }
-  const scale = Math.max(w / img.width, h / img.height) * 1.3;
+  const scale = Math.max(w / img.width, h / img.height) * 1.6;
   const dw = img.width * scale;
   const dh = img.height * scale;
   ctx.save();
-  ctx.filter = 'blur(110px)';
+  ctx.filter = 'blur(200px)';
   ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
   ctx.restore();
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -224,7 +224,7 @@ function drawCard({ title, artist, img, logo, starsStr, ratingFixed, ratingColor
   ctx.stroke();
   ty += 32;
 
-  ctx.fillStyle = 'rgba(250,36,60,0.55)';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.font = `700 60px Georgia, serif`;
   ctx.fillText('“', textX - 6, ty - 16);
 

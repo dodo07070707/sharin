@@ -39,6 +39,46 @@ export function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// `date` alone (day precision) is all older reviews have. `createdAt` adds real
+// minute-of-day precision going forward, but backfilled legacy reviews only got a
+// synthetic createdAt for sort-order tie-breaking — showing that as a real time would be
+// misleading, so those (and anything else without a precise timestamp) default to
+// 00시 00분 instead. Detected structurally (within a minute of that date's UTC midnight)
+// rather than relying only on the `createdAtApprox` flag, since some were backfilled
+// before that flag existed and can never pick it up now (they already have a `createdAt`,
+// so the backfill skips them).
+export function reviewTimestampStr(review) {
+  const [, month, day] = review.date.split('-');
+  let hh = '00';
+  let mm = '00';
+  if (review.createdAt) {
+    const daySynthetic = Math.abs(review.createdAt - Date.parse(review.date)) < 60000;
+    if (!review.createdAtApprox && !daySynthetic) {
+      const d = new Date(review.createdAt);
+      hh = String(d.getHours()).padStart(2, '0');
+      mm = String(d.getMinutes()).padStart(2, '0');
+    }
+  }
+  return `${parseInt(month, 10)}월 ${parseInt(day, 10)}일 ${hh}시 ${mm}분`;
+}
+
+// Lets a post's text block mark specific words as "big" by wrapping them in [[...]] —
+// a lightweight substitute for a full rich-text editor. Returns the text split into
+// { text, big } segments to render.
+export function parseBigText(text) {
+  const segments = [];
+  const regex = /\[\[([^\]]+)\]\]/g;
+  let lastIndex = 0;
+  let match;
+  while ((match = regex.exec(text))) {
+    if (match.index > lastIndex) segments.push({ text: text.slice(lastIndex, match.index), big: false });
+    segments.push({ text: match[1], big: true });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) segments.push({ text: text.slice(lastIndex), big: false });
+  return segments;
+}
+
 // Post content is an ordered list of blocks ({type:'text'} or {type:'item'}) so a
 // post can interleave several song/album embeds with paragraphs. Older posts were
 // written before this existed and have a plain string `content` — normalize both.

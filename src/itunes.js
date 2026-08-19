@@ -38,6 +38,11 @@ function normalizeForMatch(s) {
   return (s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 }
 
+// Splits a query into normalized word tokens, e.g. "나우아임영 ah ah" -> ["나우아임영", "ah"].
+function queryTokens(q) {
+  return [...new Set(q.split(/\s+/).map(normalizeForMatch).filter(Boolean))];
+}
+
 // iTunes's own relevance ranking sometimes just doesn't surface a real, existing
 // release for its term search at all (seen with small/indie catalog entries, even at
 // a large limit) — and it fills the result list up to `limit` with loosely-related
@@ -50,8 +55,11 @@ function normalizeForMatch(s) {
 // stripped "SS-POP" correctly finds the real one), so both the raw and stripped query
 // are tried. Neither artist match is necessarily the right one though (an artist "match"
 // on a title fragment can be pure noise), so the artist's whole catalog isn't trusted —
-// only catalog entries whose own title actually contains the query text are kept, which
-// both filters out that noise and is exactly what surfaces the real "SS-POP 3" entry.
+// only catalog entries that actually match are kept. That match is checked per query word
+// (rather than the whole query as one substring) against the artist name *and* title
+// together, since a natural query like "나우아임영 ah ah" (artist + track title) has no
+// reason to appear contiguously in the title alone — the artist name is right there in
+// the query on purpose, to disambiguate a short/generic title.
 async function searchByArtistFallback(q, type, entity) {
   try {
     const stripped = q.replace(/[\s\-_]*\b(\d+|[IVXLCDM]+)$/i, '').trim();
@@ -63,21 +71,21 @@ async function searchByArtistFallback(q, type, entity) {
 
     const lookups = await Promise.all(
       artistIds.map((id) => {
-        const lookupParams = new URLSearchParams({ id: String(id), entity, limit: '50', country: 'KR' });
+        const lookupParams = new URLSearchParams({ id: String(id), entity, limit: '200', country: 'KR' });
         return fetch(`${ITUNES_LOOKUP_URL}?${lookupParams.toString()}`)
           .then((r) => (r.ok ? r.json() : { results: [] }))
           .catch(() => ({ results: [] }));
       })
     );
 
-    const nq = normalizeForMatch(q);
-    const nStripped = normalizeForMatch(stripped);
+    const tokens = queryTokens(q);
     return lookups
       .flatMap((d) => d.results || [])
       .filter((r) => (type === 'song' ? r.kind === 'song' : r.collectionType === 'Album'))
       .filter((r) => {
-        const nTitle = normalizeForMatch(type === 'song' ? r.trackName : r.collectionName);
-        return nTitle.includes(nq) || (nStripped && nTitle.includes(nStripped));
+        const title = type === 'song' ? r.trackName : r.collectionName;
+        const haystack = normalizeForMatch(`${r.artistName || ''} ${title || ''}`);
+        return tokens.length > 0 && tokens.every((t) => haystack.includes(t));
       });
   } catch {
     return [];

@@ -420,9 +420,9 @@ export default function App() {
   // A flat 400px broke narrower viewports (padding alone could exceed the viewport
   // width, collapsing content to ~0 and wrapping text one character per line), so
   // this scales with viewport width instead of jumping between two fixed values.
-  const sectionPadHWide = 'clamp(27px, 20vw, 533px)';
+  const sectionPadHWide = isMobile ? 'clamp(14px, 10vw, 266px)' : 'clamp(27px, 20vw, 533px)';
   const displayFont = isMobile ? '28px' : '40px';
-  const homeColGrid = isMobile ? '1fr' : '1fr 1fr';
+  const homeColGrid = isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)';
 
   // Reviews only carry a day-precision `date` string, so same-day reviews used to sort
   // in whatever order they happened to land in the array (not actual submission order).

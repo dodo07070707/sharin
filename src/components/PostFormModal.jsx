@@ -196,7 +196,7 @@ export default function PostFormModal({
                     placeholder="내용을 입력하세요"
                     style={{
                       width: "100%",
-                      minHeight: 120,
+                      minHeight: 220,
                       padding: "14px 16px",
                       border: "1px solid rgba(255,255,255,0.15)",
                       borderRadius: 10,

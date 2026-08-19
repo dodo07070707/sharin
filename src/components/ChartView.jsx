@@ -70,17 +70,17 @@ export default function ChartView({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 20,
+              gap: 12,
               background: "#1c1c1e",
               border: "1px solid rgba(255,255,255,0.15)",
               borderRadius: 10,
-              padding: "16px 24px",
+              padding: "14px 16px",
               cursor: "pointer",
               textDecoration: "none",
               color: "inherit",
             }}
           >
-            <div style={{ width: 32, flex: "none", display: "flex", justifyContent: "center" }}>
+            <div style={{ width: 26, flex: "none", display: "flex", justifyContent: "center" }}>
               {rankBadgeColor(row.rank) ? (
                 <span
                   style={{
@@ -103,15 +103,35 @@ export default function ChartView({
               )}
             </div>
             <CoverThumb
-              size={56}
+              size={48}
               radius={12}
               fontSize={8}
               label={row.coverLabel}
               imageUrl={row.imageUrl}
             />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 17, fontWeight: 600 }}>{row.title}</div>
-              <div style={{ fontSize: 14, color: "#98989d" }}>{row.artist}</div>
+              <div
+                style={{
+                  fontSize: 17,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {row.title}
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  color: "#98989d",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {row.artist}
+              </div>
             </div>
             <div style={{ textAlign: "right", flex: "none" }}>
               <div style={{ color: row.ratingColor, fontSize: 14 }}>

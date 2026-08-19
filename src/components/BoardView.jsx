@@ -56,6 +56,8 @@ export default function BoardView({
                 fontSize: displayFont,
                 fontWeight: 600,
                 margin: "16px 0 8px",
+                wordBreak: "keep-all",
+                overflowWrap: "break-word",
               }}
             >
               {boardDetail.title}
@@ -78,7 +80,14 @@ export default function BoardView({
                 ) : (
                   <p
                     key={i}
-                    style={{ fontSize: 17, lineHeight: 1.47, whiteSpace: "pre-wrap", margin: 0 }}
+                    style={{
+                      fontSize: 17,
+                      lineHeight: 1.47,
+                      whiteSpace: "pre-wrap",
+                      margin: 0,
+                      wordBreak: "keep-all",
+                      overflowWrap: "break-word",
+                    }}
                   >
                     {parseBigText(block.text).map((seg, j) =>
                       seg.big ? (
@@ -231,7 +240,7 @@ export default function BoardView({
               >
                 {pt.category}
               </span>
-              <span style={{ fontSize: 17, fontWeight: 600 }}>{pt.title}</span>
+              <span style={{ fontSize: 17, fontWeight: 600, wordBreak: "keep-all" }}>{pt.title}</span>
             </div>
             <span style={{ color: "#98989d", fontSize: 12 }}>
               <span

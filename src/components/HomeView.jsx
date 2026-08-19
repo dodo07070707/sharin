@@ -262,6 +262,8 @@ export default function HomeView({
                       </span>
                       <span
                         style={{
+                          flex: 1,
+                          minWidth: 0,
                           fontSize: 13,
                           fontWeight: 600,
                           color: "#f5f5f7",
@@ -360,6 +362,8 @@ export default function HomeView({
                       </span>
                       <span
                         style={{
+                          flex: 1,
+                          minWidth: 0,
                           fontSize: 13,
                           fontWeight: 600,
                           color: "#f5f5f7",

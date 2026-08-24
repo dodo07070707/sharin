@@ -129,3 +129,24 @@ export function truncate(text, limit = REVIEW_PREVIEW_LIMIT) {
   const chars = [...text];
   return chars.length > limit ? chars.slice(0, limit).join('') + '…' : text;
 }
+
+// song.link 같은 통합 링크 서비스는 국내 인디/소규모 발매곡의 경우 일부 플랫폼
+// 매칭이 비어 있을 수 있어, 애플뮤직·스포티파이·유튜브뮤직 세 개는 직접 링크를
+// 구성해 항상 뜨도록 한다. 애플뮤직은 iTunes ID가 있으면 정확한 곡/앨범 페이지로,
+// 없으면(또는 다른 두 플랫폼은 애초에 직접 매칭할 ID가 없으므로) 아티스트+제목
+// 검색 결과로 연결한다. iTunes 검색으로 추가된 항목의 id는 'itunes<id>' 이므로,
+// itunesId 필드가 없는 예전 항목은 id에서 되살린다.
+export function platformLinksFor(item) {
+  if (!item) return null;
+  const itunesId = item.itunesId || (/^itunes(\d+)$/.exec(item.id || '') || [])[1];
+  const kind = item.type === 'album' ? 'album' : 'song';
+  const query = encodeURIComponent(`${item.artist || ''} ${item.title || ''}`.trim());
+  const slug = encodeURIComponent(`${item.artist || ''}-${item.title || ''}`.replace(/\s+/g, '-')) || kind;
+  return {
+    appleMusic: itunesId
+      ? `https://music.apple.com/kr/${kind}/${slug}/${itunesId}`
+      : `https://music.apple.com/kr/search?term=${query}`,
+    spotify: `https://open.spotify.com/search/${query}`,
+    youtubeMusic: `https://music.youtube.com/search?q=${query}`,
+  };
+}

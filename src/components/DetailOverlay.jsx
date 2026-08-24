@@ -25,6 +25,23 @@ function ReviewText({ text }) {
   );
 }
 
+// 새 탭으로 나간다는 표시 — 버튼 라벨 옆의 바로가기(외부 링크) 아이콘.
+function ExternalLinkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+const PLATFORMS = [
+  { key: "appleMusic", label: "Apple Music", color: "#fa243c" },
+  { key: "spotify", label: "Spotify", color: "#1db954" },
+  { key: "youtubeMusic", label: "YouTube Music", color: "#ff0000" },
+];
+
 export default function DetailOverlay({
   sectionPadV,
   sectionPadH,
@@ -33,6 +50,7 @@ export default function DetailOverlay({
   onClose,
   onWriteReview,
 }) {
+  const [showPlatforms, setShowPlatforms] = useState(false);
   if (!detail) return null;
 
   const shareReview = async (rv) => {
@@ -168,20 +186,107 @@ export default function DetailOverlay({
           발매일 {detail.releaseDate}
           {detail.genre && <> · {detail.genre}</>} · 리뷰 {detail.reviewCount}개
         </div>
-        <button
-          onClick={onWriteReview}
+        <div
           style={{
-            background: "#fa243c",
-            color: "#ffffff",
-            border: "none",
-            borderRadius: 9999,
-            padding: "11px 22px",
-            fontSize: 17,
-            cursor: "pointer",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
           }}
         >
-          리뷰 작성
-        </button>
+          <button
+            onClick={onWriteReview}
+            style={{
+              background: "#fa243c",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 9999,
+              padding: "11px 22px",
+              fontSize: 17,
+              cursor: "pointer",
+            }}
+          >
+            리뷰 작성
+          </button>
+          {detail.platformLinks && (
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <button
+                onClick={() => setShowPlatforms((v) => !v)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  background: "transparent",
+                  color: "#f5f5f7",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  borderRadius: 9999,
+                  padding: "11px 22px",
+                  fontSize: 17,
+                  cursor: "pointer",
+                }}
+              >
+                플랫폼에서 듣기
+                <ExternalLinkIcon />
+              </button>
+              {showPlatforms && (
+                <>
+                  <div
+                    onClick={() => setShowPlatforms(false)}
+                    style={{ position: "fixed", inset: 0, zIndex: 59 }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "#2c2c2e",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      zIndex: 60,
+                      minWidth: 190,
+                    }}
+                  >
+                    {PLATFORMS.map((p, i) => (
+                      <a
+                        key={p.key}
+                        href={detail.platformLinks[p.key]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setShowPlatforms(false)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "12px 16px",
+                          color: "#f5f5f7",
+                          textDecoration: "none",
+                          fontSize: 15,
+                          textAlign: "left",
+                          borderBottom:
+                            i < PLATFORMS.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: p.color,
+                            flex: "none",
+                          }}
+                        />
+                        {p.label}
+                      </a>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       </div>
       {detail.tracklist && detail.tracklist.length > 0 && (

@@ -13,7 +13,7 @@ import ReviewFormModal from './components/ReviewFormModal';
 import PostFormModal from './components/PostFormModal';
 import ItemSearchModal from './components/ItemSearchModal';
 import ConfirmModal from './components/ConfirmModal';
-import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor, truncate } from './utils';
+import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor, truncate, platformLinksFor } from './utils';
 import { useIsMobile, useArtworkMap, useItunesSearch, useAuthUser, useAlbumTracklist } from './hooks';
 import { useItemsCollection, usePostsCollection, usePendingUsers } from './firestoreHooks';
 import { logIn, signUp, logOut, authErrorMessage } from './auth';
@@ -537,6 +537,7 @@ export default function App() {
         ...ratingBadge(detailAvgVal),
         releaseDate: detailItemObj.releaseDate,
         genre: detailItemObj.genre || null,
+        platformLinks: platformLinksFor(detailItemObj),
         reviewCount: detailItemObj.reviews.length,
         tracklist: detailTracklist,
         reviews: [...detailItemObj.reviews]

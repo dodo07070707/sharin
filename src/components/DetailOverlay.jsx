@@ -1,5 +1,29 @@
-import { rankBadgeColor } from "../utils";
+import { useState } from "react";
+import { rankBadgeColor, truncate } from "../utils";
 import { createReviewShareCard } from "../shareCard";
+
+// Reviews are written without a length cap, so every list view elides them at the old
+// 80-character limit. This is the one place the full text is reachable — the preview
+// expands in place instead of pushing the reader into yet another view.
+function ReviewText({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!text) return null;
+  const preview = truncate(text);
+  const isLong = preview !== text;
+  return (
+    <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10, whiteSpace: "pre-wrap" }}>
+      {expanded ? text : preview}
+      {isLong && (
+        <span
+          onClick={() => setExpanded(!expanded)}
+          style={{ marginLeft: 6, color: "#fa243c", fontSize: 14, cursor: "pointer" }}
+        >
+          {expanded ? "접기" : "더보기"}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function DetailOverlay({
   sectionPadV,
@@ -243,9 +267,7 @@ export default function DetailOverlay({
               <div style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}>
                 {rv.starsStr} {rv.rating.toFixed(1)}
               </div>
-              <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10 }}>
-                {rv.text}
-              </div>
+              <ReviewText text={rv.text} />
               <div
                 style={{
                   display: "flex",

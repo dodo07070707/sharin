@@ -118,3 +118,14 @@ export function navClick(fn) {
     fn();
   };
 }
+
+// Reviews are written without a length cap, but list views were laid out for the old
+// 80-character limit — anything longer is previewed up to that length and elided, with
+// the full text left to the item detail's 더보기 toggle.
+export const REVIEW_PREVIEW_LIMIT = 80;
+
+export function truncate(text, limit = REVIEW_PREVIEW_LIMIT) {
+  if (!text) return text;
+  const chars = [...text];
+  return chars.length > limit ? chars.slice(0, limit).join('') + '…' : text;
+}

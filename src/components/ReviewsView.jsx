@@ -1,5 +1,5 @@
 import CoverThumb from "./CoverThumb";
-import { itemHref, navClick, reviewTimestampStr } from "../utils";
+import { itemHref, navClick, reviewTimestampStr, truncate } from "../utils";
 
 export default function ReviewsView({
   sectionPadV,
@@ -109,9 +109,11 @@ export default function ReviewsView({
               <div style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}>
                 {rv.starsStr} {rv.rating.toFixed(1)}
               </div>
-              <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10 }}>
-                {rv.text}
-              </div>
+              {rv.text && (
+                <div style={{ fontSize: 17, lineHeight: 1.47, marginBottom: 10 }}>
+                  {truncate(rv.text)}
+                </div>
+              )}
               <div style={{ color: "#98989d", fontSize: 12 }}>
                 <span onClick={rv.onClickAuthor} style={{ cursor: "pointer" }}>
                   {rv.userId}

@@ -1,5 +1,5 @@
 import CoverThumb from "./CoverThumb";
-import { itemHref, navClick } from "../utils";
+import { itemHref, navClick, truncate } from "../utils";
 
 function ReviewCard({ rv }) {
   return (
@@ -41,7 +41,7 @@ function ReviewCard({ rv }) {
           <div style={{ color: rv.ratingColor, fontSize: 14, marginBottom: 8 }}>
             {rv.starsStr} {rv.rating.toFixed(1)}
           </div>
-          <div style={{ fontSize: 17 }}>{rv.text}</div>
+          {rv.text && <div style={{ fontSize: 17 }}>{truncate(rv.text)}</div>}
         </div>
       </div>
       {rv.onEdit && (

@@ -13,7 +13,7 @@ import ReviewFormModal from './components/ReviewFormModal';
 import PostFormModal from './components/PostFormModal';
 import ItemSearchModal from './components/ItemSearchModal';
 import ConfirmModal from './components/ConfirmModal';
-import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor } from './utils';
+import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor, truncate } from './utils';
 import { useIsMobile, useArtworkMap, useItunesSearch, useAuthUser, useAlbumTracklist } from './hooks';
 import { useItemsCollection, usePostsCollection, usePendingUsers } from './firestoreHooks';
 import { logIn, signUp, logOut, authErrorMessage } from './auth';
@@ -222,7 +222,7 @@ export default function App() {
     setReviewFormTargetId(itemId);
     setEditingReviewId(review.id);
     setRating(review.rating);
-    setReviewTextInput(review.text);
+    setReviewTextInput(review.text || '');
     setReviewSelectId(itemId);
     setReviewSearchQuery('');
     setReviewSearchSelected(null);
@@ -248,7 +248,7 @@ export default function App() {
   };
   const requestDeleteReview = (itemId, reviewId, text) => {
     setPendingDelete({
-      message: `"${text}" 리뷰를 삭제할까요?`,
+      message: text ? `"${truncate(text)}" 리뷰를 삭제할까요?` : '리뷰를 삭제할까요?',
       onConfirm: () => { deleteReview(itemId, reviewId); setPendingDelete(null); },
     });
   };
@@ -260,7 +260,7 @@ export default function App() {
   };
   const cancelPendingDelete = () => setPendingDelete(null);
   const onSubmitReview = () => {
-    if (!reviewTextInput.trim() || !user || !user.approved) return;
+    if (!user || !user.approved) return;
 
     let targetId = reviewSelectId;
     let target = items.find((it) => it.id === targetId);

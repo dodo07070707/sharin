@@ -132,7 +132,10 @@ function drawCard({ title, artist, img, logo, starsStr, ratingFixed, ratingColor
   measure.font = `700 50px ${FONT}`;
   const titleLines = wrapTextEllipsis(measure, title, textMaxW - logoReserve, 2);
   measure.font = `700 36px ${FONT}`;
-  const quoteLines = wrapTextEllipsis(measure, text, textMaxW - 44, 3);
+  // A review can be a rating on its own — with no text the quote block (divider,
+  // quote mark, lines) is skipped entirely rather than drawn empty.
+  const quoteLines = text ? wrapTextEllipsis(measure, text, textMaxW - 44, 3) : [];
+  const hasQuote = quoteLines.length > 0;
 
   const TITLE_LH = 58;
   const QUOTE_LH = 46;
@@ -142,9 +145,7 @@ function drawCard({ title, artist, img, logo, starsStr, ratingFixed, ratingColor
     34 + // artist
     20 +
     36 + // stars
-    32 + // divider gap
-    quoteLines.length * QUOTE_LH +
-    20 +
+    (hasQuote ? 32 + quoteLines.length * QUOTE_LH + 20 : 0) + // divider gap + quote
     26; // byline
 
   const contentY = PAD_TOP;
@@ -217,24 +218,26 @@ function drawCard({ title, artist, img, logo, starsStr, ratingFixed, ratingColor
   ctx.fillText(`${starsStr} ${ratingFixed}`, textX, ty);
   ty += 52;
 
-  ctx.strokeStyle = BORDER;
-  ctx.beginPath();
-  ctx.moveTo(textX, ty);
-  ctx.lineTo(CARD_WIDTH - PAD_X, ty);
-  ctx.stroke();
-  ty += 32;
+  if (hasQuote) {
+    ctx.strokeStyle = BORDER;
+    ctx.beginPath();
+    ctx.moveTo(textX, ty);
+    ctx.lineTo(CARD_WIDTH - PAD_X, ty);
+    ctx.stroke();
+    ty += 32;
 
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.font = `700 60px Georgia, serif`;
-  ctx.fillText('“', textX - 6, ty - 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `700 60px Georgia, serif`;
+    ctx.fillText('“', textX - 6, ty - 16);
 
-  ctx.fillStyle = TEXT_MAIN;
-  ctx.font = `700 36px ${FONT}`;
-  quoteLines.forEach((line) => {
-    ctx.fillText(line, textX + 44, ty);
-    ty += QUOTE_LH;
-  });
-  ty += 20;
+    ctx.fillStyle = TEXT_MAIN;
+    ctx.font = `700 36px ${FONT}`;
+    quoteLines.forEach((line) => {
+      ctx.fillText(line, textX + 44, ty);
+      ty += QUOTE_LH;
+    });
+    ty += 20;
+  }
 
   ctx.fillStyle = TEXT_SUB;
   ctx.font = `600 22px ${FONT}`;

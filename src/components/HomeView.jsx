@@ -1,5 +1,5 @@
 import CoverThumb from "./CoverThumb";
-import { itemHref, boardHref, navClick, rankBadgeColor, reviewTimestampStr } from "../utils";
+import { itemHref, boardHref, navClick, rankBadgeColor, reviewTimestampStr, truncate } from "../utils";
 
 function ChartStrip({ title, rows }) {
   return (
@@ -275,17 +275,19 @@ export default function HomeView({
                         {rv.itemTitle}
                       </span>
                     </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "#e5e5ea",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {rv.text}
-                    </div>
+                    {rv.text && (
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "#e5e5ea",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {truncate(rv.text)}
+                      </div>
+                    )}
                     <div style={{ fontSize: 11, color: "#98989d", marginTop: 3 }}>
                       {rv.userId} · {reviewTimestampStr(rv)}
                     </div>

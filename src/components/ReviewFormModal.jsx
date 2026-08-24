@@ -1,4 +1,47 @@
+import { useEffect, useRef } from "react";
 import CoverThumb from "./CoverThumb";
+
+// Reviews are no longer capped at 80 characters, so the box starts several lines tall
+// and grows with its content instead of scrolling inside a two-line window.
+const TEXTAREA_MIN_HEIGHT = 150;
+
+function ReviewTextArea({ value, onChange }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Reset first: scrollHeight only shrinks back if the element is not already
+    // holding itself open at the taller height.
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, TEXTAREA_MIN_HEIGHT)}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      placeholder="자유롭게 남겨보세요 (선택)"
+      style={{
+        width: "100%",
+        minHeight: TEXTAREA_MIN_HEIGHT,
+        padding: "12px 16px",
+        border: "1px solid rgba(255,255,255,0.15)",
+        borderRadius: 10,
+        fontSize: 17,
+        lineHeight: 1.47,
+        marginBottom: 16,
+        outline: "none",
+        resize: "none",
+        overflow: "hidden",
+        color: "#f5f5f7",
+        background: "transparent",
+        boxSizing: "border-box",
+        fontFamily: "inherit",
+      }}
+    />
+  );
+}
 
 export default function ReviewFormModal({
   show,
@@ -25,7 +68,7 @@ export default function ReviewFormModal({
   onClose,
 }) {
   if (!show) return null;
-  const canSubmit = !!textInput.trim();
+  const canSubmit = !showSearch || !!selectedSearchResult;
 
   return (
     <div
@@ -410,26 +453,7 @@ export default function ReviewFormModal({
         </div>
 
         {/* 리뷰 */}
-        <textarea
-          value={textInput}
-          onChange={onTextChange}
-          maxLength={80}
-          placeholder="한 줄로 남겨보세요 (최대 80자)"
-          style={{
-            width: "100%",
-            minHeight: 80,
-            padding: "12px 16px",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: 10,
-            fontSize: 17,
-            marginBottom: 16,
-            outline: "none",
-            resize: "none",
-            color: "#f5f5f7",
-            background: "transparent",
-            boxSizing: "border-box",
-          }}
-        />
+        <ReviewTextArea value={textInput} onChange={onTextChange} />
 
         {/* 버튼 */}
         <div

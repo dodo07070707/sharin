@@ -150,3 +150,21 @@ export function platformLinksFor(item) {
     youtubeMusic: `https://music.youtube.com/search?q=${query}`,
   };
 }
+
+// 리뷰 목록 검색. 공백·기호·대소문자 차이를 무시하고, 질의의 각 단어가 제목과
+// 아티스트명을 합친 문자열 어디에든 들어 있으면 매칭으로 본다. 단어 단위로 보는
+// 이유는 "아이유 밤편지"처럼 아티스트+제목을 한 번에 치는 자연스러운 질의가
+// 어느 한 필드에 통째로 이어져 나타나지는 않기 때문.
+function normalizeSearch(s) {
+  return (s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+export function searchTokens(query) {
+  return [...new Set((query || '').split(/\s+/).map(normalizeSearch).filter(Boolean))];
+}
+
+export function matchesSearch(tokens, ...fields) {
+  if (!tokens.length) return true;
+  const haystack = normalizeSearch(fields.join(' '));
+  return tokens.every((t) => haystack.includes(t));
+}

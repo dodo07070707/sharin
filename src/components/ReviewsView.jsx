@@ -7,6 +7,8 @@ export default function ReviewsView({
   displayFont,
   reviewType,
   onSetReviewType,
+  reviewQuery,
+  onSetReviewQuery,
   reviewFlat,
   onOpenReviewFormNew,
 }) {
@@ -47,7 +49,15 @@ export default function ReviewsView({
           리뷰 작성
         </button>
       </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 24,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
         {toggles.map((tg) => (
           <button
             key={tg.key}
@@ -67,8 +77,66 @@ export default function ReviewsView({
             {tg.label}
           </button>
         ))}
+        <div
+          style={{
+            position: "relative",
+            flex: "1 1 200px",
+            minWidth: 160,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <input
+            value={reviewQuery}
+            onChange={(e) => onSetReviewQuery(e.target.value)}
+            placeholder={
+              reviewType === "song"
+                ? "곡 제목 또는 아티스트 검색"
+                : "앨범 제목 또는 아티스트 검색"
+            }
+            style={{
+              width: "100%",
+              padding: reviewQuery ? "10px 38px 10px 18px" : "10px 18px",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 9999,
+              fontSize: 14,
+              color: "#f5f5f7",
+              background: "transparent",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          {reviewQuery && (
+            <button
+              onClick={() => onSetReviewQuery("")}
+              aria-label="검색어 지우기"
+              style={{
+                position: "absolute",
+                right: 6,
+                background: "transparent",
+                color: "#98989d",
+                border: "none",
+                borderRadius: 9999,
+                width: 28,
+                height: 28,
+                fontSize: 16,
+                lineHeight: 1,
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {reviewFlat.length === 0 && (
+          <p style={{ color: "#98989d", fontSize: 14, margin: 0 }}>
+            {reviewQuery.trim()
+              ? `'${reviewQuery.trim()}' 검색 결과가 없어요.`
+              : "아직 리뷰가 없어요."}
+          </p>
+        )}
         {reviewFlat.map((rv) => (
           <div
             key={rv.id}

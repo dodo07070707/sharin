@@ -13,7 +13,7 @@ import ReviewFormModal from './components/ReviewFormModal';
 import PostFormModal from './components/PostFormModal';
 import ItemSearchModal from './components/ItemSearchModal';
 import ConfirmModal from './components/ConfirmModal';
-import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor, truncate, platformLinksFor } from './utils';
+import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor, truncate, platformLinksFor, searchTokens, matchesSearch } from './utils';
 import { useIsMobile, useArtworkMap, useItunesSearch, useAuthUser, useAlbumTracklist } from './hooks';
 import { useItemsCollection, usePostsCollection, usePendingUsers } from './firestoreHooks';
 import { logIn, signUp, logOut, authErrorMessage } from './auth';
@@ -22,6 +22,7 @@ export default function App() {
   const [view, setViewState] = useState('home');
   const [chartType, setChartType] = useState('song');
   const [reviewType, setReviewType] = useState('song');
+  const [reviewListQuery, setReviewListQuery] = useState('');
   const [boardFilter, setBoardFilter] = useState('전체');
   const [detailId, setDetailId] = useState(null);
   const [boardDetailId, setBoardDetailId] = useState(null);
@@ -457,8 +458,10 @@ export default function App() {
   const homeChartSongs = buildChartRows('song').slice(0, 8);
   const homeChartAlbums = buildChartRows('album').slice(0, 8);
 
+  const reviewListTokens = searchTokens(reviewListQuery);
   const reviewFlat = items
     .filter((i) => i.type === reviewType)
+    .filter((i) => matchesSearch(reviewListTokens, i.title, i.artist))
     .flatMap((i) =>
       i.reviews.map((r) => ({
         ...r,
@@ -674,6 +677,8 @@ export default function App() {
           displayFont={displayFont}
           reviewType={reviewType}
           onSetReviewType={setReviewType}
+          reviewQuery={reviewListQuery}
+          onSetReviewQuery={setReviewListQuery}
           reviewFlat={reviewFlat}
           onOpenReviewFormNew={openReviewFormNew}
         />

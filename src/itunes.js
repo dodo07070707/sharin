@@ -130,31 +130,37 @@ function artistFieldsOf(r) {
 // so the title is scored against only what is left of the query once the artist name is
 // taken out. That is what lets Sik-K's "U" — an exact title hit — outrank the many
 // tracks of his that merely happen to contain a "u" inside a feature credit.
-// A query that is exactly an artist's name outranks even an exact title hit, because
-// searching "NewJeans" otherwise surfaces obscure tracks literally titled "NEWJEANS"
-// ahead of the group's own catalog.
+// A title hit always outranks an artist-name hit: searching "nobody" is a search for the
+// song called "Nobody", not for the back catalogue of an artist who happens to go by that
+// name. Tracks by a matching artist still rank above partial title matches, so searching
+// a bare artist name ("Sik-K") returns their releases rather than loose title fragments.
+//
+// The two cases are structurally identical — one query word, matching a title here and an
+// artist there — so no rule can separate them without a popularity signal that the iTunes
+// API doesn't expose. Title-first is the call: it's what a search box is normally for.
 function scoreResult(tokens, r, type) {
   const title = normalizeForMatch(titleOf(r, type));
-  const artistFields = artistFieldsOf(r).map(normalizeForMatch);
-  const artist = artistFields.join(' ');
+  const artist = artistFieldsOf(r).map(normalizeForMatch).join(' ');
+  // Words the artist already accounts for don't have to appear in the title as well,
+  // which is what lets "Sik-K U" match a track simply titled "U".
   const titleTokens = tokens.filter((t) => !artist.includes(t));
   const joined = titleTokens.join('');
   let score;
-  if (artistFields.some((a) => a && a === tokens.join(''))) score = 120;
-  else if (!titleTokens.length) score = 60; // a pure artist query — every one of their releases is equally valid
+  if (title === tokens.join('')) score = 120; // the whole query is the title
+  else if (!titleTokens.length) score = 70; // the whole query is the artist — all of their releases qualify
   else if (title === joined) score = 100;
-  else if (title.startsWith(joined)) score = 70;
-  else if (title.includes(joined)) score = 50;
-  else if (titleTokens.every((t) => title.includes(t))) score = 30;
+  else if (title.startsWith(joined)) score = 85;
+  else if (title.includes(joined)) score = 60;
+  else if (titleTokens.every((t) => title.includes(t))) score = 40;
   else score = 0;
   if (!score) return 0;
   if (tokens.some((t) => artist.includes(t))) score += 10;
   // Came out of a catalog lookup for an artist Apple itself tied to the query, which is
-  // what separates IU's own "밤편지" from the pile of identically-titled covers. It says
-  // nothing extra once the name already matches exactly, though — for a query like
-  // "BLACKPINK", where Apple's artist search only turns up same-named unknowns, the
-  // bonus would just promote them over the real group's own term-search hits.
-  if (score !== 120 && r.resolvedArtistName) score += 5;
+  // what separates IU's own "밤편지" from the pile of identically-titled covers. It adds
+  // nothing when the query matched the artist and not the title, though — for a query
+  // like "BLACKPINK", where Apple's artist search only turns up same-named unknowns, the
+  // bonus would just promote those over the real group's own term-search hits.
+  if (titleTokens.length && r.resolvedArtistName) score += 5;
   return score;
 }
 

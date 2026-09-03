@@ -18,8 +18,13 @@ function normalize(result, type) {
   };
 }
 
+// country is intentionally omitted here: Apple's search endpoint (unlike lookup/
+// musicArtist search) currently returns 0 results for entity=song/album whenever
+// country=KR is set, even for well-known catalog — confirmed by comparing against
+// country=US and no-country requests, which both return correct results. Metadata
+// (title/artist/artwork) isn't storefront-dependent, so omitting it is safe.
 async function searchByTerm(q, type, entity, limit) {
-  const params = new URLSearchParams({ term: q, media: 'music', entity, limit: String(limit), country: 'KR' });
+  const params = new URLSearchParams({ term: q, media: 'music', entity, limit: String(limit) });
   const res = await fetch(`${ITUNES_SEARCH_URL}?${params.toString()}`);
   if (!res.ok) throw new Error('iTunes 검색에 실패했습니다.');
   const data = await res.json();

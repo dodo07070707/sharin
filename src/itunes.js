@@ -126,19 +126,50 @@ function artistFieldsOf(r) {
   return [r.resolvedArtistName || '', r.artistName || ''];
 }
 
-// Words the artist already accounts for shouldn't have to appear in the title as well,
-// so the title is scored against only what is left of the query once the artist name is
-// taken out. That is what lets Sik-K's "U" — an exact title hit — outrank the many
-// tracks of his that merely happen to contain a "u" inside a feature credit.
-// A title hit always outranks an artist-name hit: searching "nobody" is a search for the
-// song called "Nobody", not for the back catalogue of an artist who happens to go by that
-// name. Tracks by a matching artist still rank above partial title matches, so searching
-// a bare artist name ("Sik-K") returns their releases rather than loose title fragments.
+// Apple's term search doubles as the popularity signal the API otherwise doesn't expose:
+// a query that really is an artist's name comes back saturated with that artist (36 of 48
+// results for "NewJeans"), while a query that's a song title spreads thinly over many
+// artists (3 of 48 at most for "nobody"). Reading that skew costs no extra request — the
+// sample is the search already being run.
+const DOMINANT_SHARE = 0.25;
+const DOMINANT_MIN_COUNT = 5;
+
+// Maps each dominating artist to their own name rather than just collecting ids, because
+// the bonus has to be checked against that name alone. A track's artistName is the whole
+// credit line, and a one-letter query word hides far too easily inside it — the "u" of
+// "Sik-K U" turns up in a collaborator's "BIG Naughty", which would otherwise read as a
+// pure artist query and lift the whole feature over the song actually titled "U". The
+// shortest credit an artist appears under is the closest thing to their bare name.
+function dominantArtists(termResults) {
+  const counts = new Map();
+  const names = new Map();
+  for (const r of termResults) {
+    if (!r.artistId) continue;
+    counts.set(r.artistId, (counts.get(r.artistId) || 0) + 1);
+    const name = normalizeForMatch(r.artistName);
+    const known = names.get(r.artistId);
+    if (!known || name.length < known.length) names.set(r.artistId, name);
+  }
+  const dominant = new Map();
+  for (const [id, n] of counts) {
+    if (n >= DOMINANT_MIN_COUNT && n / termResults.length >= DOMINANT_SHARE) {
+      dominant.set(id, names.get(id) || '');
+    }
+  }
+  return dominant;
+}
+
+// A title hit outranks an artist-name hit: searching "nobody" is a search for the song
+// called "Nobody", not for the back catalogue of an artist who happens to go by that name.
+// Tracks by a matching artist still rank above partial title matches, so a bare artist
+// name ("Sik-K") returns their releases rather than loose title fragments.
 //
-// The two cases are structurally identical — one query word, matching a title here and an
-// artist there — so no rule can separate them without a popularity signal that the iTunes
-// API doesn't expose. Title-first is the call: it's what a search box is normally for.
-function scoreResult(tokens, r, type) {
+// The one exception is an artist dominating the sample above: "NewJeans" is unambiguously
+// about the group, so their songs belong ahead of the obscure tracks literally titled
+// "NEWJEANS". That only applies where the query is entirely the artist's name — once a
+// title word is in play ("Sik-K U") the title ranking governs, so the exact "U" can't be
+// pushed under the rest of his catalogue.
+function scoreResult(tokens, r, type, dominant) {
   const title = normalizeForMatch(titleOf(r, type));
   const artist = artistFieldsOf(r).map(normalizeForMatch).join(' ');
   // Words the artist already accounts for don't have to appear in the title as well,
@@ -155,6 +186,10 @@ function scoreResult(tokens, r, type) {
   else score = 0;
   if (!score) return 0;
   if (tokens.some((t) => artist.includes(t))) score += 10;
+  // Only where the query is the artist's bare name — every query word has to sit in that
+  // name, not merely somewhere in the credit line.
+  const dominantName = dominant.get(r.artistId);
+  if (dominantName && tokens.every((t) => dominantName.includes(t))) score += 45;
   // Came out of a catalog lookup for an artist Apple itself tied to the query, which is
   // what separates IU's own "밤편지" from the pile of identically-titled covers. It adds
   // nothing when the query matched the artist and not the title, though — for a query
@@ -223,9 +258,12 @@ export async function searchItunes(term, type = 'song', limit = 12) {
   // matching nothing scores 0 and sinks rather than being dropped, in case Apple matched
   // on something the simple substring check misses. The sort is stable, so Apple's
   // relevance still breaks ties among equally-scored results.
+  // Dominance is measured on the term results alone: the fallback is one artist's entire
+  // catalogue, which would swamp any share calculation it took part in.
   const tokens = queryTokens(q);
+  const dominant = dominantArtists(termResults);
   const ranked = [...termResults, ...fallbackResults]
-    .map((r, idx) => ({ r, idx, score: scoreResult(tokens, r, type) }))
+    .map((r, idx) => ({ r, idx, score: scoreResult(tokens, r, type, dominant) }))
     .sort((a, b) => b.score - a.score || a.idx - b.idx);
 
   // The same recording reaches us once per release it appears on (a single and the album

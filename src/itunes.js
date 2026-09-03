@@ -43,6 +43,17 @@ function queryTokens(q) {
   return [...new Set(q.split(/\s+/).map(normalizeForMatch).filter(Boolean))];
 }
 
+// Normalizing artist+title as one joined string (with no separator) can accidentally
+// create a substring at the word boundary that was never in either field (e.g. artist
+// "Deretta" + title "HELLA FLAME" merges into "...deretta hellaflame..." -> "tahella" ->
+// contains "ah"). Normalizing each field separately and joining with a single space
+// keeps that boundary intact so short tokens can't match across it.
+function matchesTokens(tokens, artistName, title) {
+  if (!tokens.length) return false;
+  const haystack = `${normalizeForMatch(artistName)} ${normalizeForMatch(title)}`;
+  return tokens.every((t) => haystack.includes(t));
+}
+
 // iTunes's own relevance ranking sometimes just doesn't surface a real, existing
 // release for its term search at all (seen with small/indie catalog entries, even at
 // a large limit) — and it fills the result list up to `limit` with loosely-related
@@ -82,11 +93,7 @@ async function searchByArtistFallback(q, type, entity) {
     return lookups
       .flatMap((d) => d.results || [])
       .filter((r) => (type === 'song' ? r.kind === 'song' : r.collectionType === 'Album'))
-      .filter((r) => {
-        const title = type === 'song' ? r.trackName : r.collectionName;
-        const haystack = normalizeForMatch(`${r.artistName || ''} ${title || ''}`);
-        return tokens.length > 0 && tokens.every((t) => haystack.includes(t));
-      });
+      .filter((r) => matchesTokens(tokens, r.artistName || '', (type === 'song' ? r.trackName : r.collectionName) || ''));
   } catch {
     return [];
   }
@@ -102,10 +109,23 @@ export async function searchItunes(term, type = 'song', limit = 12) {
     searchByArtistFallback(q, type, entity),
   ]);
 
+  // Apple's own term-search relevance is occasionally fuzzy/unrelated (e.g. a query like
+  // "ah ah" surfacing a track whose title and artist contain neither word at all), so a
+  // term result that doesn't actually contain any query token is pushed after the
+  // artist-fallback matches instead of trusting Apple's ranking outright — it's kept
+  // (not dropped) in case Apple matched on something our simple substring check misses.
+  const tokens = queryTokens(q);
+  const termMatched = [];
+  const termUnmatched = [];
+  for (const r of termResults) {
+    const title = type === 'song' ? r.trackName : r.collectionName;
+    (matchesTokens(tokens, r.artistName || '', title || '') ? termMatched : termUnmatched).push(r);
+  }
+
   const idOf = (r) => (type === 'song' ? r.trackId : r.collectionId);
   const seenIds = new Set();
   const combined = [];
-  for (const r of [...fallbackResults, ...termResults]) {
+  for (const r of [...termMatched, ...fallbackResults, ...termUnmatched]) {
     const id = idOf(r);
     if (seenIds.has(id)) continue;
     seenIds.add(id);

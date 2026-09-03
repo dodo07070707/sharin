@@ -105,6 +105,17 @@ export default function ReviewFormModal({
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
       }
+
+      /* 검색 결과 목록은 모달 본문 스크롤바 바로 옆에 두 번째 스크롤바가
+         겹쳐 보여서 숨긴다. 스크롤 자체는 그대로 동작한다. */
+      .review-results-scroll {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .review-results-scroll::-webkit-scrollbar {
+        display: none;
+      }
     `}</style>
       <div
         className="review-modal-scroll"
@@ -189,6 +200,7 @@ export default function ReviewFormModal({
 
             {/* 검색 결과 */}
             <div
+              className="review-results-scroll"
               style={{
                 maxHeight: 220,
                 overflowY: "auto",

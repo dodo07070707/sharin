@@ -38,8 +38,12 @@ async function searchByTerm(q, type, entity, limit) {
   return (data.results || []).filter((r) => (type === 'song' ? r.kind === 'song' : r.collectionType === 'Album'));
 }
 
+// No country here either: the KR storefront's artist index misses real artists outright
+// ("양홍원" returns Leellamarz/GIRIBOY but never 양홍원 himself, "BLACKPINK" returns
+// same-named unknowns), while the default storefront resolves both. The catalog lookup
+// below keeps country=KR, so tracks still come back under their Korean credits.
 async function findArtists(term) {
-  const params = new URLSearchParams({ term, media: 'music', entity: 'musicArtist', limit: '3', country: 'KR' });
+  const params = new URLSearchParams({ term, media: 'music', entity: 'musicArtist', limit: '3' });
   const res = await fetch(`${ITUNES_SEARCH_URL}?${params.toString()}`);
   if (!res.ok) return [];
   const data = await res.json();

@@ -1,3 +1,5 @@
+import { searchDeezer } from './shared/api';
+
 const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 const ITUNES_LOOKUP_URL = 'https://itunes.apple.com/lookup';
 
@@ -245,15 +247,116 @@ async function searchByArtistFallback(q, type, entity) {
   }
 }
 
+// The term search runs against the default (US) storefront — see searchByTerm — so its
+// hits come back under English names ("Through the Night" by "IU"), while the artist
+// fallback's KR lookup returns Korean ones ("밤편지" by "아이유"). Re-reading them from
+// the KR storefront in one batched lookup puts every result under the Korean storefront's
+// names, which also lets both forms of one song dedupe. The English name is kept as
+// `original` so a query typed in English still matches. Anything the KR storefront
+// doesn't carry, or a failed lookup, keeps the name it came with.
+async function localizeToKR(results, idOf) {
+  const ids = [...new Set(results.map(idOf))];
+  if (!ids.length) return results;
+  try {
+    const params = new URLSearchParams({ id: ids.join(','), country: 'KR' });
+    const res = await fetch(`${ITUNES_LOOKUP_URL}?${params.toString()}`);
+    if (!res.ok) return results;
+    const data = await res.json();
+    const byId = new Map((data.results || []).map((r) => [idOf(r), r]));
+    return results.map((r) => {
+      const kr = byId.get(idOf(r));
+      if (!kr) return r;
+      return { ...r, trackName: kr.trackName, collectionName: kr.collectionName, artistName: kr.artistName, original: r };
+    });
+  } catch {
+    return results;
+  }
+}
+
+// iTunes tags releases with a " - Single"/" - EP" suffix Deezer doesn't use; punctuation
+// and case (curly vs straight quotes) wash out in normalizeForMatch. Bracketed parts stay:
+// "BOOMBAYAH (Japan Version)" is a different recording from "BOOMBAYAH" and mustn't borrow
+// the original's popularity.
+function releaseTitle(s) {
+  return normalizeForMatch((s || '').replace(/\s-\s(Single|EP)$/i, ''));
+}
+
+// An iTunes credit line can name several artists ("SYSTEM SEOUL & MUNZi") where Deezer
+// names only the main one, so either name containing the other counts.
+function sameArtist(a, b) {
+  const x = normalizeForMatch(a);
+  const y = normalizeForMatch(b);
+  return !!x && !!y && (x.includes(y) || y.includes(x));
+}
+
+// Whether a Deezer hit is this iTunes result, under either its Korean or English names —
+// Deezer lists AKMU's song under its English title, iTunes KR under the Korean one.
+function isSameRelease(hit, r, type) {
+  const title = releaseTitle(hit.title);
+  if (!title) return false;
+  const forms = r.original ? [r, r.original] : [r];
+  return (
+    forms.some((f) => releaseTitle(titleOf(f, type)) === title) &&
+    [r.artistName, r.original?.artistName, r.resolvedArtistName].some((a) => sameArtist(a, hit.artist))
+  );
+}
+
+// iTunes exposes no play counts, so Deezer's rank (0 to about a million) stands in. Rank
+// 100,000 is where barely-played tracks sit — every cover of "밤편지" Deezer returns is
+// at exactly 100000 — so only rank above that counts as popularity at all; anything less
+// would just reward whichever covers Deezer happened to return (it doesn't return IU's
+// original for "밤편지"). Past that the bonus climbs fast to its cap, which is set so a
+// genuine hit can clear an obscure exact-title match — AKMU's original (rank ~290k) over a
+// cover titled exactly "어떻게 이별까지 사랑하겠어?" — while only ever being added to a
+// result that already matches the query.
+const POPULARITY_FLOOR = 1e5;
+const POPULARITY_CAP = 40;
+function popularityBonus(rank) {
+  return rank > POPULARITY_FLOOR ? Math.min(POPULARITY_CAP, Math.log10(rank / POPULARITY_FLOOR) * 100) : 0;
+}
+
+// Deezer indexes some releases Apple's term search never surfaces — Munzi's
+// "I•SEOUL•U 2" turns up on Deezer by its title alone, and not at all on Apple. The first
+// such hit among Deezer's top few that matches every query word is looked up in that
+// artist's KR catalog, so it still arrives as an ordinary iTunes result.
+const DISCOVERY_DEPTH = 3;
+async function discoverFromDeezer(hits, candidates, tokens, type, entity) {
+  const missing = hits
+    .slice(0, DISCOVERY_DEPTH)
+    .find((h) => matchesTokens(tokens, h.artist, h.title) && !candidates.some((r) => isSameRelease(h, r, type)));
+  if (!missing) return [];
+  try {
+    const artist = (await findArtists(missing.artist)).find((a) => sameArtist(a.name, missing.artist));
+    if (!artist) return [];
+    const params = new URLSearchParams({ id: String(artist.id), entity, limit: '200', country: 'KR' });
+    const res = await fetch(`${ITUNES_LOOKUP_URL}?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.results || [])
+      .filter((r) => (type === 'song' ? r.kind === 'song' : r.collectionType === 'Album'))
+      .map((r) => ({ ...r, resolvedArtistName: artist.name }))
+      .filter((r) => isSameRelease(missing, r, type));
+  } catch {
+    return [];
+  }
+}
+
 export async function searchItunes(term, type = 'song', limit = 12) {
   const q = term.trim();
   if (!q) return [];
   const entity = type === 'song' ? 'song' : 'album';
+  const idOf = (r) => (type === 'song' ? r.trackId : r.collectionId);
+  const tokens = queryTokens(q);
 
-  const [termResults, fallbackResults] = await Promise.all([
-    searchByTerm(q, type, entity, Math.min(limit * CANDIDATE_MULTIPLIER, 200)),
+  // Localized before scoring, not after: AKMU's "어떻게 이별까지 사랑하겠어, 널 사랑하는
+  // 거지" is Apple's own top hit for that title, but under its US name "How can I love the
+  // heartbreak…" it matched no query word and sank below every karaoke copy.
+  const [termResults, fallbackResults, deezerHits] = await Promise.all([
+    searchByTerm(q, type, entity, Math.min(limit * CANDIDATE_MULTIPLIER, 200)).then((rs) => localizeToKR(rs, idOf)),
     searchByArtistFallback(q, type, entity),
+    searchDeezer(q, type),
   ]);
+  const discovered = await discoverFromDeezer(deezerHits, [...termResults, ...fallbackResults], tokens, type, entity);
 
   // Apple's own term-search relevance is occasionally fuzzy/unrelated (e.g. a query like
   // "ah ah" surfacing a track whose title and artist contain neither word at all), and
@@ -264,23 +367,36 @@ export async function searchItunes(term, type = 'song', limit = 12) {
   // relevance still breaks ties among equally-scored results.
   // Dominance is measured on the term results alone: the fallback is one artist's entire
   // catalogue, which would swamp any share calculation it took part in.
-  const tokens = queryTokens(q);
-  const dominant = dominantArtists(termResults);
-  const ranked = [...termResults, ...fallbackResults]
-    .map((r, idx) => ({ r, idx, score: scoreResult(tokens, r, type, dominant) }))
+  // Measured on the names the term search returned (before KR localization): a query
+  // like "NewJeans" has to find itself in "NewJeans", not in the localized "뉴진스".
+  const dominant = dominantArtists(termResults.map((r) => r.original || r));
+  // A localized result is scored under both its Korean and English names, whichever fits
+  // the query better; Deezer popularity only adds to a result that matched at all.
+  const rankOf = (r) => Math.max(0, ...deezerHits.filter((h) => isSameRelease(h, r, type)).map((h) => h.rank));
+  const scoreOf = (r) => {
+    const relevance = Math.max(
+      scoreResult(tokens, r, type, dominant),
+      r.original ? scoreResult(tokens, r.original, type, dominant) : 0
+    );
+    return relevance ? relevance + popularityBonus(rankOf(r)) : 0;
+  };
+  const ranked = [...termResults, ...fallbackResults, ...discovered]
+    .map((r, idx) => ({ r, idx, score: scoreOf(r) }))
     .sort((a, b) => b.score - a.score || a.idx - b.idx);
 
   // The same recording reaches us once per release it appears on (a single and the album
   // that later collected it), which reads as a duplicate row in the picker — for a review
   // it's the same song either way, so only the best-ranked copy of a title/artist pair is
   // kept.
-  const idOf = (r) => (type === 'song' ? r.trackId : r.collectionId);
   const seenIds = new Set();
   const seenTitles = new Set();
   const combined = [];
   for (const { r } of ranked) {
     const id = idOf(r);
-    const titleKey = `${normalizeForMatch(r.artistName || '')}:${normalizeForMatch(titleOf(r, type))}`;
+    // Keyed on artistId rather than the credited name: a release the KR storefront doesn't
+    // carry keeps its English credit ("IVE") while its KR twin reads "아이브", but both
+    // share one artistId.
+    const titleKey = `${r.artistId ?? normalizeForMatch(r.artistName || '')}:${normalizeForMatch(titleOf(r, type))}`;
     if (seenIds.has(id) || seenTitles.has(titleKey)) continue;
     seenIds.add(id);
     seenTitles.add(titleKey);

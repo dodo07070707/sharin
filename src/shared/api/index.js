@@ -1,0 +1,1 @@
+export { searchDeezer } from './deezer';

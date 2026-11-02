@@ -438,7 +438,18 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
         <GripIcon />
       </button>
       <div style={{ flex: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-        <CoverThumb size={56} radius={8} fontSize={6} imageUrl={slot.artworkUrl} />
+        {/* The cover itself is the upload target; the file input sits transparent over it
+            (rather than display:none) so it stays keyboard-focusable. */}
+        <label style={{ position: "relative", display: "block", cursor: "pointer" }}>
+          <CoverThumb size={56} radius={8} fontSize={10} label="+ 사진" imageUrl={slot.artworkUrl} />
+          <input
+            type="file"
+            accept="image/*"
+            aria-label={`${i + 1}번 커버 사진 올리기`}
+            onChange={onUploadCover(i)}
+            style={{ position: "absolute", inset: 0, width: "100%", opacity: 0, cursor: "pointer" }}
+          />
+        </label>
         <span style={{ fontSize: 11, color: "#98989d" }}>
           {i + 1} / {story.slots.length}
         </span>
@@ -470,17 +481,6 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
         <button onClick={() => setPickSlot(i)} style={{ ...pillStyle(false), padding: "10px 16px" }}>
           검색
         </button>
-        <label style={{ ...pillStyle(false), padding: "6px 12px", fontSize: 12, position: "relative" }}>
-          사진
-          {/* Transparent over the label rather than display:none, so it stays focusable. */}
-          <input
-            type="file"
-            accept="image/*"
-            aria-label={`${i + 1}번 커버 사진 올리기`}
-            onChange={onUploadCover(i)}
-            style={{ position: "absolute", inset: 0, width: "100%", opacity: 0, cursor: "pointer" }}
-          />
-        </label>
         {story.slots.length > 1 && (
           <button
             onClick={() => removeSlot(i)}

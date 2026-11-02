@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { renderStory, STORY_LAYOUTS, STORY_THEMES } from "../../../features/story-card";
+import {
+  renderStory,
+  STORY_LAYOUTS,
+  STORY_THEMES,
+  DEFAULT_GLOW_COLORS,
+  glowColorsFrom,
+} from "../../../features/story-card";
 import { saveStoryTemplate, loadStoryTemplate } from "../../../features/story-template";
 import { shareOrDownloadImage } from "../../../shared/lib";
 import ItemSearchModal from "../../../components/ItemSearchModal";
@@ -7,17 +13,16 @@ import CoverThumb from "../../../components/CoverThumb";
 import { useItunesSearch, useIsMobile } from "../../../hooks";
 
 const DEFAULT_LABELS = [
-  "이달의 노래",
+  "이달의 음악",
   "이달의 앨범",
-  "최다 청취 아티스트",
-  "반복재생 1위",
-  "새벽에 듣던 노래",
-  "처음 만난 곡",
-  "숨겨진 명곡",
-  "요즘 빠진 노래",
+  "이달의 디깅",
+  "이달의 신곡",
+  "이달의 K-pop",
+  "이달의 J-pop",
+  "이달의 EDM",
+  "이달의 힙합",
 ];
-// Past this the list rows shrink until the story's text is too small to read.
-const MAX_SLOTS = 12;
+const MAX_SLOTS = 8;
 
 const emptySlot = (label = "") => ({ label, title: "", sub: "", artworkUrl: null });
 
@@ -25,6 +30,7 @@ function newDraft() {
   return {
     layout: "magazine",
     theme: "sunset",
+    glowColors: DEFAULT_GLOW_COLORS,
     title: `${new Date().toLocaleString("en-US", { month: "long" })} Recap`,
     handle: "",
     slots: DEFAULT_LABELS.map(emptySlot),
@@ -144,6 +150,8 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
           ...s,
           layout: STORY_LAYOUTS[t.layout] ? t.layout : s.layout,
           theme: STORY_THEMES[t.theme] ? t.theme : s.theme,
+          // Formats saved before the custom theme existed carry no colors.
+          glowColors: t.glowColors?.length === DEFAULT_GLOW_COLORS.length ? t.glowColors : s.glowColors,
           slots: t.labels.slice(0, MAX_SLOTS).map((label, i) => ({ ...(s.slots[i] ?? emptySlot()), label })),
         }));
       })
@@ -220,7 +228,36 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
       </section>
       <section style={sectionStyle}>
         <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>색 테마</h2>
-        <PillGroup label="색 테마" options={STORY_THEMES} value={story.theme} onChange={(theme) => update({ theme })} />      </section>
+        <PillGroup label="색 테마" options={STORY_THEMES} value={story.theme} onChange={(theme) => update({ theme })} />
+        {STORY_THEMES[story.theme].customGlows && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            {/* One pick sets all three; the individual swatches after it fine-tune. */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#f5f5f7" }}>
+              <input
+                type="color"
+                value={story.glowColors[0]}
+                onChange={(e) => update({ glowColors: glowColorsFrom(e.target.value) })}
+                style={{ width: 44, height: 44, padding: 0, border: "none", borderRadius: 10, background: "none", cursor: "pointer" }}
+              />
+              기준 색
+            </label>
+            <span aria-hidden="true" style={{ width: 1, height: 28, background: "rgba(255,255,255,0.15)" }} />
+            {story.glowColors.map((color, i) => (
+              <label key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#98989d" }}>
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) =>
+                    update({ glowColors: story.glowColors.map((c, j) => (j === i ? e.target.value : c)) })
+                  }
+                  style={{ width: 44, height: 44, padding: 0, border: "none", borderRadius: 10, background: "none", cursor: "pointer" }}
+                />
+                색 {i + 1}
+              </label>
+            ))}
+          </div>
+        )}
+      </section>
       <section style={sectionStyle}>
         <label style={fieldLabelStyle}>
           제목

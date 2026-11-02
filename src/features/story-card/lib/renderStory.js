@@ -42,7 +42,7 @@ export async function renderStory(story) {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
-  theme.paint(ctx, bg);
+  theme.paint(ctx, bg, story);
   layout.draw(ctx, story, covers, theme);
   // Layouts may shift themselves down to centre their content; the brand stays pinned
   // to the bottom regardless.

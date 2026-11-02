@@ -3,6 +3,7 @@ const NAV_DEFS = [
   { key: "chart", label: "차트" },
   { key: "reviews", label: "리뷰" },
   { key: "board", label: "게시글" },
+  { key: "story", label: "결산" },
   { key: "backoffice", label: "마이페이지" },
 ];
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { rankBadgeColor, truncate } from "../utils";
 import { createReviewShareCard } from "../shareCard";
+import { shareOrDownloadImage } from "../shared/lib";
 
 // Reviews are written without a length cap, so every list view elides them at the old
 // 80-character limit. This is the one place the full text is reachable — the preview
@@ -65,19 +66,9 @@ export default function DetailOverlay({
         authorId: rv.userId,
         text: rv.text,
       });
-      const file = new File([blob], "sharin-review.png", { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "sharin-review.png";
-      a.click();
-      URL.revokeObjectURL(url);
+      await shareOrDownloadImage(blob, "sharin-review.png");
     } catch {
-      // user cancelled the share sheet, or card generation failed — no-op
+      // card generation failed — no-op
     }
   };
 

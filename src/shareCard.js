@@ -1,3 +1,5 @@
+import { loadImage } from './shared/lib';
+
 const CARD_WIDTH = 1620;
 const PAD_X = 60;
 const PAD_TOP = 50;
@@ -55,22 +57,6 @@ function wrapTextEllipsis(ctx, text, maxWidth, maxLines) {
   }
   kept[maxLines - 1] = line + '…';
   return kept;
-}
-
-// Resolves to null (rather than rejecting) on any load failure — e.g. the artwork
-// CDN not granting CORS — so the card still renders, just without cover art.
-function loadImage(url) {
-  return new Promise((resolve) => {
-    if (!url) {
-      resolve(null);
-      return;
-    }
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
 }
 
 // The site favicon is a dark stroke (meant for a light browser-tab background), so

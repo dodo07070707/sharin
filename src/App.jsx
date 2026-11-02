@@ -13,6 +13,7 @@ import ReviewFormModal from './components/ReviewFormModal';
 import PostFormModal from './components/PostFormModal';
 import ItemSearchModal from './components/ItemSearchModal';
 import ConfirmModal from './components/ConfirmModal';
+import { StoryMakerPage } from './pages/story-maker';
 import { avg, starsStr, typeBadge, ratingBadge, artworkFor, todayStr, itemHref, boardHref, normalizePostContent, boardCoverFor, truncate, platformLinksFor, searchTokens, matchesSearch } from './utils';
 import { useIsMobile, useArtworkMap, useItunesSearch, useAuthUser, useAlbumTracklist } from './hooks';
 import { useItemsCollection, usePostsCollection, usePendingUsers } from './firestoreHooks';
@@ -50,6 +51,7 @@ export default function App() {
   const [reviewSearchSelected, setReviewSearchSelected] = useState(null);
 
   const [postFormReturnView, setPostFormReturnView] = useState('board');
+  const [storyReturnView, setStoryReturnView] = useState('home');
   const [editingPostId, setEditingPostId] = useState(null);
   const [postTitleInput, setPostTitleInput] = useState('');
   const [postCategoryInput, setPostCategoryInput] = useState('월간결산');
@@ -114,6 +116,7 @@ export default function App() {
   const goReviews = () => { setView('reviews'); resetDetails(); };
   const goBoard = () => { setView('board'); resetDetails(); };
   const onNavigate = (key) => {
+    if (key === 'story' && view !== 'story') setStoryReturnView(view);
     setView(key);
     resetDetails();
     if (key === 'backoffice') setMyPageUserId(null);
@@ -699,6 +702,10 @@ export default function App() {
           onOpenPostFormNew={openPostFormNew}
           onOpenItem={openDetail}
         />
+      )}
+
+      {view === 'story' && (
+        <StoryMakerPage user={user} onLoginClick={onLoginClick} onBack={() => setView(storyReturnView)} sectionPadV={sectionPadV} sectionPadH={sectionPadHWide} displayFont={displayFont} />
       )}
 
       {view === 'backoffice' && (

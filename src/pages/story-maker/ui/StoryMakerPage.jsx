@@ -119,6 +119,26 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
   // The first slot is the hero, so at least one always stays.
   const removeSlot = (i) =>
     setStory((s) => (s.slots.length > 1 ? { ...s, slots: s.slots.filter((_, j) => j !== i) } : s));
+  // Swaps a slot with its neighbour (dir -1 or +1). Moving into slot 1 makes it the hero.
+  const [movedSlot, setMovedSlot] = useState(null);
+  const moveSlot = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= story.slots.length) return;
+    setStory((s) => {
+      const slots = [...s.slots];
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+      return { ...s, slots };
+    });
+    setMovedSlot({ index: j });
+  };
+  // Keeps the moved card in view — on a phone it would otherwise slide out of the carousel.
+  useEffect(() => {
+    if (movedSlot) {
+      document
+        .querySelector(`[data-slot="${movedSlot.index}"]`)
+        ?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    }
+  }, [movedSlot]);
 
   const onPick = (r) => {
     updateSlot(pickSlot, { title: r.title, sub: r.artist, artworkUrl: r.artworkUrl });
@@ -271,9 +291,21 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
     </>
   );
 
+  const arrowStyle = (enabled) => ({
+    background: "none",
+    border: "none",
+    padding: "2px 4px",
+    fontSize: 14,
+    lineHeight: 1,
+    color: enabled ? "#f5f5f7" : "rgba(255,255,255,0.2)",
+    cursor: enabled ? "pointer" : "default",
+  });
+  const [prevArrow, nextArrow] = isMobile ? ["←", "→"] : ["↑", "↓"];
+
   const slotCards = story.slots.map((slot, i) => (
     <div
       key={i}
+      data-slot={i}
       style={{
         display: "flex",
         gap: 12,
@@ -287,9 +319,27 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
     >
       <div style={{ flex: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         <CoverThumb size={56} radius={8} fontSize={6} imageUrl={slot.artworkUrl} />
-        <span style={{ fontSize: 11, color: "#98989d" }}>
-          {i + 1} / {story.slots.length}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <button
+            onClick={() => moveSlot(i, -1)}
+            disabled={i === 0}
+            aria-label={`${i + 1}번을 앞으로`}
+            style={arrowStyle(i > 0)}
+          >
+            {prevArrow}
+          </button>
+          <span style={{ fontSize: 11, color: "#98989d" }}>
+            {i + 1} / {story.slots.length}
+          </span>
+          <button
+            onClick={() => moveSlot(i, 1)}
+            disabled={i === story.slots.length - 1}
+            aria-label={`${i + 1}번을 뒤로`}
+            style={arrowStyle(i < story.slots.length - 1)}
+          >
+            {nextArrow}
+          </button>
+        </div>
       </div>
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
         <input

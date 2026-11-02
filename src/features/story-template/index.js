@@ -1,1 +1,1 @@
-export { saveStoryTemplate, loadStoryTemplate } from './api/templates';
+export { saveStoryTemplate, loadStoryTemplate, saveStoryDraft, loadStoryDraft } from './api/templates';

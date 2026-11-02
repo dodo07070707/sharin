@@ -20,3 +20,16 @@ export function saveStoryTemplate(uid, { layout, theme, glowColors, slots }) {
 export function loadStoryTemplate(uid) {
   return getDoc(templateOf(uid)).then((snap) => (snap.exists() ? snap.data() : null));
 }
+
+// The whole story in progress — songs included — kept beside the format as one draft
+// per account (users/{uid}/storyTemplates/draft), replaced on every save.
+const draftOf = (uid) => doc(db, 'users', uid, 'storyTemplates', 'draft');
+
+export function saveStoryDraft(uid, { layout, theme, glowColors, title, handle, slots }) {
+  return setDoc(draftOf(uid), { layout, theme, glowColors, title, handle, slots, savedAt: Date.now() });
+}
+
+// Resolves to null when the account has no draft.
+export function loadStoryDraft(uid) {
+  return getDoc(draftOf(uid)).then((snap) => (snap.exists() ? snap.data() : null));
+}

@@ -1,1 +1,1 @@
-export { loadImage, shareOrDownloadImage } from './image';
+export { loadImage, shareOrDownloadImage, fileToSquareDataUrl } from './image';

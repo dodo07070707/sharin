@@ -11,9 +11,10 @@ function cachedImage(url) {
 }
 
 // Search results carry 300px artwork; the hero cover is drawn at 300px on a 1080px
-// story, so ask Apple's CDN for a sharper copy.
+// story, so ask Apple's CDN for a sharper copy. An uploaded cover is a data URL and is
+// left exactly as it is.
 function largeArtwork(url) {
-  return url ? url.replace(/\d+x\d+bb/, '600x600bb') : null;
+  return url?.startsWith('http') ? url.replace(/\d+x\d+bb/, '600x600bb') : url;
 }
 
 const FONT_FACES = [500, 600, 700, 800, 900].flatMap((w) => [`${w} 16px Inter`, `${w} 16px Pretendard`]);

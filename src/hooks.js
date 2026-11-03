@@ -92,10 +92,11 @@ export function useAlbumTracklist(itunesId, type) {
 // "JP요비고에": the Korean reading is looked up on YouTube for the Japanese title, which
 // is then searched on iTunes.
 async function searchJapanese(term, type) {
-  const { title, videoTitles } = await resolveJapaneseTitle(term);
-  if (!title) return { results: [], hint: '일본어 제목을 찾지 못했어요.' };
+  const { title, videoTitles, remaining } = await resolveJapaneseTitle(term);
+  const left = remaining === null ? '' : ` · 오늘 남은 검색 약 ${remaining}회`;
+  if (!title) return { results: [], hint: `일본어 제목을 찾지 못했어요.${left}` };
   const results = preferArtistsInTitles(await searchItunes(title, type), videoTitles);
-  return { results, hint: `「${title}」(으)로 찾았어요.` };
+  return { results, hint: `「${title}」(으)로 찾았어요.${left}` };
 }
 
 // Debounced iTunes search used by the 리뷰 작성 flow. A "JP…" query spends YouTube quota,

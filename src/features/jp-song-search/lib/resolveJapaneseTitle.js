@@ -1,5 +1,6 @@
 import { searchYoutubeTitles } from '../../../shared/api';
 import { pickJapaneseTitle } from './pickJapaneseTitle';
+import { countYoutubeSearch } from '../api/youtubeQuota';
 
 // "JP요비고에" / "jp 요비고에" -> "요비고에". Only JP followed by Hangul (jamo included, so
 // the mode kicks in while still typing), so artists like "JPEGMAFIA" search as usual.
@@ -15,13 +16,14 @@ export function parseJpQuery(query) {
 // the double Enter some Korean IMEs fire. Failures are dropped so they can be retried.
 const cache = new Map();
 
-// Resolves to { title, videoTitles }; title is null when no Japanese was found.
+// Resolves to { title, videoTitles, remaining }; title is null when no Japanese was
+// found, remaining is null when the usage count couldn't be read.
 export function resolveJapaneseTitle(term) {
   if (!cache.has(term)) {
     cache.set(
       term,
-      searchYoutubeTitles(term, 3)
-        .then((videoTitles) => ({ title: pickJapaneseTitle(videoTitles), videoTitles }))
+      Promise.all([searchYoutubeTitles(term, 3), countYoutubeSearch()])
+        .then(([videoTitles, remaining]) => ({ title: pickJapaneseTitle(videoTitles), videoTitles, remaining }))
         .catch((e) => {
           cache.delete(term);
           throw e;

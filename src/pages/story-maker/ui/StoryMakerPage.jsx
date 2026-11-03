@@ -31,7 +31,7 @@ function newDraft() {
     layout: "magazine",
     theme: "sunset",
     glowColors: DEFAULT_GLOW_COLORS,
-    title: `${new Date().toLocaleString("en-US", { month: "long" })} Recap`,
+    title: "Recap",
     handle: "",
     slots: DEFAULT_LABELS.map(emptySlot),
   };

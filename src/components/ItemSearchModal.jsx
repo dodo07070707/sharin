@@ -9,6 +9,8 @@ export default function ItemSearchModal({
   results,
   loading,
   error,
+  hint,
+  onSubmit,
   onAdd,
   onClose,
 }) {
@@ -71,6 +73,7 @@ export default function ItemSearchModal({
         <input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onSubmit?.()}
           placeholder="곡 제목 또는 아티스트로 검색"
           autoFocus
           style={{
@@ -104,7 +107,10 @@ export default function ItemSearchModal({
           {!loading && error && (
             <p style={{ color: "#ff453a", fontSize: 14 }}>{error}</p>
           )}
-          {!loading && !error && query.trim() && results.length === 0 && (
+          {!loading && !error && hint && (
+            <p style={{ color: "#98989d", fontSize: 14 }}>{hint}</p>
+          )}
+          {!loading && !error && !hint && query.trim() && results.length === 0 && (
             <p style={{ color: "#98989d", fontSize: 14 }}>
               검색 결과가 없어요.
             </p>

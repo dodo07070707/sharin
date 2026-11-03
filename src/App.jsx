@@ -94,12 +94,24 @@ export default function App() {
 
   const isMobile = useIsMobile();
   const artworkMap = useArtworkMap(items);
-  const { results: reviewSearchResults, loading: reviewSearchLoading, error: reviewSearchError } = useItunesSearch(
+  const {
+    results: reviewSearchResults,
+    loading: reviewSearchLoading,
+    error: reviewSearchError,
+    hint: reviewSearchHint,
+    submit: submitReviewSearch,
+  } = useItunesSearch(
     reviewSearchQuery,
     reviewSearchType,
     showReviewForm && !reviewFormTargetId && !editingReviewId
   );
-  const { results: postItemSearchResults, loading: postItemSearchLoading, error: postItemSearchError } = useItunesSearch(
+  const {
+    results: postItemSearchResults,
+    loading: postItemSearchLoading,
+    error: postItemSearchError,
+    hint: postItemSearchHint,
+    submit: submitPostItemSearch,
+  } = useItunesSearch(
     postItemSearchQuery,
     postItemSearchType,
     showPostItemSearch
@@ -784,6 +796,8 @@ export default function App() {
         searchResults={reviewSearchResults}
         searchLoading={reviewSearchLoading}
         searchError={reviewSearchError}
+        searchHint={reviewSearchHint}
+        onSearchSubmit={submitReviewSearch}
         selectedSearchResult={reviewSearchSelected}
         onSelectSearchResult={(result) => {
           setReviewSearchSelected(result);
@@ -811,6 +825,8 @@ export default function App() {
         results={postItemSearchResults}
         loading={postItemSearchLoading}
         error={postItemSearchError}
+        hint={postItemSearchHint}
+        onSubmit={submitPostItemSearch}
         onAdd={onPickPostItem}
         onClose={() => setShowPostItemSearch(false)}
       />

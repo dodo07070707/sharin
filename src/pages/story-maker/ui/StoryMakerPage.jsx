@@ -105,7 +105,7 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
   const previewRef = useRef(null);
   const slotScrollRef = useRef(null);
   const isMobile = useIsMobile();
-  const { results, loading, error } = useItunesSearch(query, searchType, pickSlot !== null);
+  const { results, loading, error, hint, submit } = useItunesSearch(query, searchType, pickSlot !== null);
 
   // The signed-in user resolves after mount, so the handle is filled in once it's known.
   useEffect(() => {
@@ -609,6 +609,8 @@ export default function StoryMakerPage({ user, onLoginClick, onBack, sectionPadV
         results={results}
         loading={loading}
         error={error}
+        hint={hint}
+        onSubmit={submit}
         onAdd={onPick}
         onClose={() => setPickSlot(null)}
       />

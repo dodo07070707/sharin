@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchArtwork, searchItunes, fetchAlbumTracklist } from './itunes';
+import { parseJpQuery, resolveJapaneseTitle, preferArtistsInTitles } from './features/jp-song-search';
 import { subscribeToAuthUser } from './auth';
 import { subscribeToUserProfile } from './firestoreHooks';
 
@@ -88,39 +89,76 @@ export function useAlbumTracklist(itunesId, type) {
   return tracks;
 }
 
-// Debounced iTunes search used by the 리뷰 작성 flow.
+// "JP요비고에": the Korean reading is looked up on YouTube for the Japanese title, which
+// is then searched on iTunes.
+async function searchJapanese(term, type) {
+  const { title, videoTitles } = await resolveJapaneseTitle(term);
+  if (!title) return { results: [], hint: '일본어 제목을 찾지 못했어요.' };
+  const results = preferArtistsInTitles(await searchItunes(title, type), videoTitles);
+  return { results, hint: `「${title}」(으)로 찾았어요.` };
+}
+
+// Debounced iTunes search used by the 리뷰 작성 flow. A "JP…" query spends YouTube quota,
+// so it waits for submit() (Enter) instead of firing as the user types.
 export function useItunesSearch(query, type, active) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hint, setHint] = useState('');
+  const [submitted, setSubmitted] = useState({ query: '', n: 0 });
+
+  const jpTerm = parseJpQuery(query);
+  const jpReady = jpTerm !== null && submitted.query === query;
+  const submitN = jpReady ? submitted.n : 0;
 
   useEffect(() => {
     if (!active || !query.trim()) {
       setResults([]);
       setError('');
+      setHint('');
+      setLoading(false);
+      return;
+    }
+    if (jpTerm !== null && !jpReady) {
+      setResults([]);
+      setError('');
+      setHint('Enter를 누르면 일본 노래를 찾아요.');
       setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError('');
+    setHint('');
     const timer = setTimeout(() => {
-      searchItunes(query, type)
+      const search = jpReady
+        ? searchJapanese(jpTerm, type)
+        : searchItunes(query, type).then(
+            (r) => ({ results: r, hint: '' }),
+            () => {
+              throw new Error('검색 중 오류가 발생했어요.');
+            }
+          );
+      search
         .then((r) => {
-          if (!cancelled) setResults(r);
+          if (cancelled) return;
+          setResults(r.results);
+          setHint(r.hint);
         })
-        .catch(() => {
-          if (!cancelled) setError('검색 중 오류가 발생했어요.');
+        .catch((e) => {
+          if (!cancelled) setError(e.message || '검색 중 오류가 발생했어요.');
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
-    }, 400);
+    }, jpReady ? 0 : 400);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, type, active]);
+  }, [query, type, active, jpTerm, jpReady, submitN]);
 
-  return { results, loading, error };
+  const submit = () => setSubmitted((s) => ({ query, n: s.n + 1 }));
+
+  return { results, loading, error, hint, submit };
 }

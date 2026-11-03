@@ -54,6 +54,8 @@ export default function ReviewFormModal({
   searchResults,
   searchLoading,
   searchError,
+  searchHint,
+  onSearchSubmit,
   selectedSearchResult,
   onSelectSearchResult,
   hasFixed,
@@ -182,6 +184,7 @@ export default function ReviewFormModal({
             <input
               value={searchQuery}
               onChange={onSearchQueryChange}
+              onKeyDown={(e) => e.key === "Enter" && onSearchSubmit?.()}
               placeholder="곡 제목 또는 아티스트로 검색"
               autoFocus
               style={{
@@ -234,8 +237,21 @@ export default function ReviewFormModal({
                 </p>
               )}
 
+              {!searchLoading && !searchError && searchHint && (
+                <p
+                  style={{
+                    color: "#98989d",
+                    fontSize: 13,
+                    margin: 0,
+                  }}
+                >
+                  {searchHint}
+                </p>
+              )}
+
               {!searchLoading &&
                 !searchError &&
+                !searchHint &&
                 searchQuery.trim() &&
                 searchResults.length === 0 && (
                   <p
